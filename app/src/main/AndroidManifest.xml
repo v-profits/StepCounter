@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Датчик шагов желателен, но не обязателен: без него приложение
+         всё равно установится (покажет предупреждение и демо-режим) -->
+    <uses-feature
+        android:name="android.hardware.sensor.stepcounter"
+        android:required="false" />
+
+    <!-- Доступ к данным о физической активности (шаги) -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- Разрешение запускать фоновый (foreground) сервис -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Нужно на Android 14+ для сервиса типа "health" -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- Показ уведомлений (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Получить сигнал о включении телефона, чтобы снова запустить подсчёт -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:name=".StepCounterApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.StepCounter">
+
+        <!-- Единственный экран приложения; он же запускается с иконки -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Фоновый сервис подсчёта шагов (тип "health") -->
+        <service
+            android:name=".service.StepService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+        <!-- Приёмник сигнала "телефон загрузился" -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

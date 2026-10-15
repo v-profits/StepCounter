@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Шагомер</string>
+    <string name="channel_name">Подсчёт шагов</string>
+</resources>
