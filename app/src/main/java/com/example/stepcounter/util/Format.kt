@@ -1,6 +1,7 @@
 package com.example.stepcounter.util
 
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -28,3 +29,16 @@ fun LocalDate.shortWeekday(): String =
 
 /** Дата -> "14 окт" (число и месяц). */
 fun LocalDate.dayMonth(): String = format(DateTimeFormatter.ofPattern("d MMM", RU))
+
+// Названия месяцев заданы вручную, чтобы выглядели одинаково на всех телефонах
+private val MONTHS_SHORT = listOf("Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек")
+private val MONTHS_FULL = listOf(
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+)
+
+/** Месяц -> "Окт". */
+fun YearMonth.shortName(): String = MONTHS_SHORT[monthValue - 1]
+
+/** Месяц -> "Октябрь 2026". */
+fun YearMonth.fullName(): String = "${MONTHS_FULL[monthValue - 1]} $year"

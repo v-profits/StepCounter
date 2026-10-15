@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Шагомер</string>
     <string name="channel_name">Подсчёт шагов</string>
-    <string name="widget_description">Шаги за сегодня и прогресс к цели</string>
+    <string name="widget_description">Шаги, калории и дистанция за сегодня</string>
 </resources>

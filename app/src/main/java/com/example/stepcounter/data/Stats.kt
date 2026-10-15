@@ -1,6 +1,7 @@
 package com.example.stepcounter.data
 
 import java.time.LocalDate
+import java.time.YearMonth
 
 /** Шаги за один день. */
 data class DaySteps(val date: LocalDate, val steps: Int)
@@ -56,3 +57,40 @@ fun currentStreak(history: Map<LocalDate, Int>, today: LocalDate, goal: Int): In
     }
     return n
 }
+
+/** Итоги за один календарный месяц (для годовой статистики). */
+data class MonthSteps(
+    val month: YearMonth,    // какой месяц
+    val total: Int,          // всего шагов за месяц
+    val daysCounted: Int,    // сколько дней месяца учтено (с первой записи и не позже сегодня)
+) {
+    /** Среднее число шагов в день за месяц (0, если дней нет). */
+    val average: Int get() = if (daysCounted == 0) 0 else total / daysCounted
+}
+
+/**
+ * Последние [count] месяцев, заканчивая текущим (по возрастанию).
+ * В расчёт идут только дни с первой записи до сегодняшнего дня —
+ * поэтому у нового пользователя средние значения не занижаются пустыми днями.
+ */
+fun periodMonths(
+    history: Map<LocalDate, Int>,
+    today: LocalDate,
+    firstRecorded: LocalDate?,
+    count: Int = 12,
+): List<MonthSteps> =
+    (count - 1 downTo 0).map { back ->
+        val ym = YearMonth.from(today).minusMonths(back.toLong())
+        val lastDay = ym.atEndOfMonth().let { if (it.isAfter(today)) today else it } // не считаем будущие дни
+        var total = 0
+        var days = 0
+        var d = ym.atDay(1)
+        while (!d.isAfter(lastDay)) {
+            if (firstRecorded != null && !d.isBefore(firstRecorded)) {
+                total += history[d] ?: 0
+                days++
+            }
+            d = d.plusDays(1)
+        }
+        MonthSteps(ym, total, days)
+    }

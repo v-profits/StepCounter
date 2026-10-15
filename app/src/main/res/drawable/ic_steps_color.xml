@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Иконка «шаги» (следы), зелёная. Цвет подобран так, чтобы читаться и на светлом, и на тёмном фоне -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#1DB98F"
+        android:pathData="M5.5,8.5 a3,4.2 0 1,0 6,0 a3,4.2 0 1,0 -6,0z" />
+    <path
+        android:fillColor="#1DB98F"
+        android:pathData="M6.3,16.2 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0z" />
+    <path
+        android:fillColor="#1DB98F"
+        android:pathData="M12.5,11.5 a3,4.2 0 1,0 6,0 a3,4.2 0 1,0 -6,0z" />
+    <path
+        android:fillColor="#1DB98F"
+        android:pathData="M13.3,19 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0z" />
+</vector>

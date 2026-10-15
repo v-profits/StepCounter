@@ -14,12 +14,16 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.stepcounter.MainActivity
 import com.example.stepcounter.R
 import com.example.stepcounter.StepCounterApp
 import com.example.stepcounter.data.StepRepository
+import com.example.stepcounter.data.UserSettings
+import com.example.stepcounter.util.formatKcal
+import com.example.stepcounter.util.formatKm
 import com.example.stepcounter.util.formatSteps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,9 +35,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
- * Фоновый сервис: слушает датчик шагов и обновляет уведомление с прогрессом.
+ * Фоновый сервис: слушает датчик шагов и обновляет уведомление.
  * Работает как foreground-сервис — поэтому система его не «убивает» и в шторке
- * всегда висит уведомление.
+ * всегда висит уведомление (шаги, калории, дистанция и полоска прогресса).
  * SensorEventListener — интерфейс, через который датчик присылает показания.
  */
 class StepService : Service(), SensorEventListener {
@@ -50,7 +54,7 @@ class StepService : Service(), SensorEventListener {
         createChannel() // канал уведомлений (обязателен с Android 8)
 
         // ВАЖНО: foreground-сервис обязан сразу показать уведомление
-        val initial = buildNotification(repo.stepsFor(), repo.settings.value.goal)
+        val initial = buildNotification(repo.stepsFor(), repo.settings.value)
         if (Build.VERSION.SDK_INT >= 34) {
             // На Android 14+ нужно указать тип сервиса — здесь «здоровье»
             startForeground(NOTIFICATION_ID, initial, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
@@ -69,14 +73,14 @@ class StepService : Service(), SensorEventListener {
         // Подписываемся на показания датчика (this = onSensorChanged ниже)
         sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
 
-        // Следим за данными: как только меняются шаги или цель — обновляем уведомление
+        // Следим за данными: как только меняются шаги или настройки — обновляем уведомление
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         scope.launch {
             combine(repo.history, repo.settings) { history, settings ->
-                (history[LocalDate.now()] ?: 0) to settings.goal // пара (шаги сегодня, цель)
+                (history[LocalDate.now()] ?: 0) to settings // пара (шаги сегодня, настройки)
             }.distinctUntilChanged() // реагируем, только если пара изменилась
-                .collect { (steps, goal) ->
-                    nm.notify(NOTIFICATION_ID, buildNotification(steps, goal))
+                .collect { (steps, settings) ->
+                    nm.notify(NOTIFICATION_ID, buildNotification(steps, settings))
                 }
         }
     }
@@ -116,8 +120,23 @@ class StepService : Service(), SensorEventListener {
             .createNotificationChannel(channel)
     }
 
-    /** Собирает уведомление: заголовок с шагами, строка с целью и полоса прогресса. */
-    private fun buildNotification(steps: Int, goal: Int): Notification {
+    /**
+     * Собирает уведомление. Внутри — свой макет (notification_steps.xml):
+     * иконки + числа шагов, калорий и километров и полоска прогресса к цели.
+     */
+    private fun buildNotification(steps: Int, settings: UserSettings): Notification {
+        val goal = settings.goal
+        val kcal = settings.calories(steps).formatKcal()
+        val km = settings.distanceKm(steps).formatKm()
+
+        // Заполняем макет уведомления значениями
+        val content = RemoteViews(packageName, R.layout.notification_steps).apply {
+            setTextViewText(R.id.notif_steps, steps.formatSteps())
+            setTextViewText(R.id.notif_kcal, "$kcal ккал")
+            setTextViewText(R.id.notif_km, "$km км")
+            setProgressBar(R.id.notif_progress, goal, steps.coerceAtMost(goal), false)
+        }
+
         // Нажатие на уведомление открывает приложение
         val openApp = PendingIntent.getActivity(
             this, 0,
@@ -125,12 +144,12 @@ class StepService : Service(), SensorEventListener {
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val percent = (steps * 100L / goal.coerceAtLeast(1)).toInt() // процент от цели
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_steps)                         // маленькая иконка
-            .setContentTitle("Сегодня: ${steps.formatSteps()} шагов")  // заголовок
-            .setContentText("Цель ${goal.formatSteps()} · $percent%")  // вторая строка
-            .setProgress(goal, steps.coerceAtMost(goal), false)        // полоса прогресса
+            .setSmallIcon(R.drawable.ic_steps)                         // маленькая иконка в строке состояния
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())   // система рисует рамку, мы — содержимое
+            .setCustomContentView(content)                             // наш макет с иконками
+            .setContentTitle(steps.formatSteps())                      // запасной текст (там, где свой макет не показывается)
+            .setContentText("$kcal ккал · $km км")
             .setOngoing(true)                                          // нельзя смахнуть (на старых версиях)
             .setOnlyAlertOnce(true)                                    // не пищать при обновлении
             .setSilent(true)

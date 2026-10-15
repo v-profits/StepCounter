@@ -132,7 +132,7 @@ fun BarChart(
     val cs = MaterialTheme.colorScheme
     // Верхняя граница шкалы: самый высокий столбец или цель + 15% запаса сверху
     val maxValue = max(entries.maxOfOrNull { it.value } ?: 0, goal).coerceAtLeast(1) * 1.15f
-    val dense = entries.size > 14                  // «плотный» режим (месяц): тонкие столбцы
+    val dense = entries.size > 11                  // «плотный» режим (месяц, год): тонкие столбцы
     val gap = if (dense) 2.dp else 8.dp            // промежуток между столбцами
     val radius = if (dense) 3.dp else 8.dp         // скругление верхушек
     // Градиент для столбцов, достигших цели

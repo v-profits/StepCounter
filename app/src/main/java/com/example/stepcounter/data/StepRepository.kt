@@ -79,15 +79,15 @@ class StepRepository(context: Context) {
     val settings: StateFlow<UserSettings> = _settings.asStateFlow()
 
     init {
-        // Обновляем виджет на рабочем столе, когда меняются шаги сегодня или цель.
+        // Обновляем виджет на рабочем столе, когда меняются шаги сегодня или настройки.
         // После обновления делаем паузу — так виджет обновляется не чаще раза в несколько секунд
         // (conflate оставляет только самое свежее значение, пока мы ждём).
         scope.launch {
-            combine(history, settings) { h, s -> (h[LocalDate.now()] ?: 0) to s.goal }
+            combine(history, settings) { h, s -> (h[LocalDate.now()] ?: 0) to s }
                 .distinctUntilChanged()
                 .conflate()
-                .collect { (steps, goal) ->
-                    StepWidgetProvider.updateAll(appContext, steps, goal)
+                .collect { (steps, userSettings) ->
+                    StepWidgetProvider.updateAll(appContext, steps, userSettings)
                     delay(WIDGET_MIN_INTERVAL_MS)
                 }
         }

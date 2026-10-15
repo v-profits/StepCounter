@@ -15,7 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.Map as MapIcon
+import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -134,7 +134,7 @@ fun TodayScreen(
         // Ряд из трёх карточек: дистанция, калории, серия дней
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
-                painter = rememberVectorPainter(Icons.Rounded.MapIcon),
+                painter = rememberVectorPainter(Icons.Rounded.Place),
                 value = settings.distanceKm(steps).formatKm(),
                 unit = "км",
                 label = "Дистанция",
