@@ -13,11 +13,12 @@ import com.example.stepcounter.StepCounterApp
 import com.example.stepcounter.data.UserSettings
 import com.example.stepcounter.util.formatKcal
 import com.example.stepcounter.util.formatKm
+import com.example.stepcounter.util.ProgressLine
 import com.example.stepcounter.util.formatSteps
 
 /**
- * Виджет рабочего стола размером 2x1: шаги, калории и дистанция за сегодня (с иконками)
- * и полоска прогресса к цели. Нажатие на виджет открывает приложение.
+ * Виджет рабочего стола размером 3x1: по виду повторяет уведомление в шторке — шаги, калории
+ * и дистанция за сегодня (с иконками) и линия прогресса к цели. Нажатие на виджет открывает приложение.
  *
  * Виджеты рисуются в другом процессе (на рабочем столе), поэтому используется RemoteViews —
  * упрощённый набор обычных (не Compose) View.
@@ -50,14 +51,14 @@ class StepWidgetProvider : AppWidgetProvider() {
         private fun buildViews(context: Context, steps: Int, settings: UserSettings): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_steps)
 
-            // Значения: шаги (и цель под ними), калории, километры
+            // Значения — как в уведомлении: шаги, калории с единицей, километры с единицей
             views.setTextViewText(R.id.widget_steps, steps.formatSteps())
-            views.setTextViewText(R.id.widget_goal, "из ${settings.goal.formatSteps()}")
-            views.setTextViewText(R.id.widget_kcal, settings.calories(steps).formatKcal())
-            views.setTextViewText(R.id.widget_km, settings.distanceKm(steps).formatKm())
+            views.setTextViewText(R.id.widget_kcal, "${settings.calories(steps).formatKcal()} ккал")
+            views.setTextViewText(R.id.widget_km, "${settings.distanceKm(steps).formatKm()} км")
 
-            // Полоска прогресса: максимум — цель, текущее значение — шаги (не больше цели)
-            views.setProgressBar(R.id.widget_progress, settings.goal, steps.coerceAtMost(settings.goal), false)
+            // Линия прогресса под надписями: доля шагов от цели (рисуется картинкой)
+            val progress = steps / settings.goal.coerceAtLeast(1).toFloat()
+            views.setImageViewBitmap(R.id.widget_progress, ProgressLine.draw(progress))
 
             // Нажатие на виджет -> открыть приложение
             val openApp = PendingIntent.getActivity(

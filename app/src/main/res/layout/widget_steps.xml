@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Виджет 2x1: три колонки (шаги, калории, дистанция) с иконками и полоска прогресса.
-     Те же данные, что и в уведомлении. -->
+<!-- Виджет 3x1. Устроен так же, как уведомление в шторке (notification_steps.xml):
+     иконки 18dp, шрифт 15sp жирный, значения с единицами и линия прогресса под ними. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -14,134 +14,95 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         android:weightSum="3">
 
-        <!-- Шаги (внизу — цель) -->
+        <!-- Шаги -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:layout_weight="0.95"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_steps_color" />
 
             <TextView
                 android:id="@+id/widget_steps"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:autoSizeMaxTextSize="16sp"
-                android:autoSizeMinTextSize="10sp"
-                android:autoSizeTextType="uniform"
-                android:gravity="center"
+                android:layout_marginStart="4dp"
                 android:maxLines="1"
                 android:text="0"
                 android:textColor="@color/widget_text"
+                android:textSize="15sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/widget_goal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:autoSizeMaxTextSize="10sp"
-                android:autoSizeMinTextSize="7sp"
-                android:autoSizeTextType="uniform"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="из 10 000"
-                android:textColor="@color/widget_text_secondary" />
         </LinearLayout>
 
         <!-- Калории -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:layout_weight="1.1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_fire_color" />
 
             <TextView
                 android:id="@+id/widget_kcal"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:autoSizeMaxTextSize="16sp"
-                android:autoSizeMinTextSize="10sp"
-                android:autoSizeTextType="uniform"
-                android:gravity="center"
+                android:layout_marginStart="4dp"
                 android:maxLines="1"
-                android:text="0"
+                android:text="0 ккал"
                 android:textColor="@color/widget_text"
+                android:textSize="15sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="ккал"
-                android:textColor="@color/widget_text_secondary"
-                android:textSize="10sp" />
         </LinearLayout>
 
         <!-- Дистанция -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:layout_weight="0.95"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_place_color" />
 
             <TextView
                 android:id="@+id/widget_km"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:autoSizeMaxTextSize="16sp"
-                android:autoSizeMinTextSize="10sp"
-                android:autoSizeTextType="uniform"
-                android:gravity="center"
+                android:layout_marginStart="4dp"
                 android:maxLines="1"
-                android:text="0"
+                android:text="0 км"
                 android:textColor="@color/widget_text"
+                android:textSize="15sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="км"
-                android:textColor="@color/widget_text_secondary"
-                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Прогресс к дневной цели -->
-    <ProgressBar
+    <!-- Линия прогресса под надписями (картинку рисует StepWidgetProvider), как в уведомлении -->
+    <ImageView
         android:id="@+id/widget_progress"
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:layout_marginTop="5dp"
-        android:indeterminate="false"
-        android:max="100"
-        android:maxHeight="4dp"
-        android:minHeight="4dp"
-        android:progress="0"
-        android:progressDrawable="@drawable/progress_goal" />
+        android:layout_marginTop="6dp"
+        android:contentDescription="@null"
+        android:scaleType="fitXY" />
 </LinearLayout>

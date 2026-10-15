@@ -22,6 +22,7 @@ import com.example.stepcounter.R
 import com.example.stepcounter.StepCounterApp
 import com.example.stepcounter.data.StepRepository
 import com.example.stepcounter.data.UserSettings
+import com.example.stepcounter.util.ProgressLine
 import com.example.stepcounter.util.formatKcal
 import com.example.stepcounter.util.formatKm
 import com.example.stepcounter.util.formatSteps
@@ -134,7 +135,8 @@ class StepService : Service(), SensorEventListener {
             setTextViewText(R.id.notif_steps, steps.formatSteps())
             setTextViewText(R.id.notif_kcal, "$kcal ккал")
             setTextViewText(R.id.notif_km, "$km км")
-            setProgressBar(R.id.notif_progress, goal, steps.coerceAtMost(goal), false)
+            // Линия прогресса под надписями: доля шагов от цели (рисуется картинкой)
+            setImageViewBitmap(R.id.notif_progress, ProgressLine.draw(steps / goal.coerceAtLeast(1).toFloat()))
         }
 
         // Нажатие на уведомление открывает приложение

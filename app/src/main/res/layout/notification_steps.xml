@@ -92,16 +92,12 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Прогресс к дневной цели -->
-    <ProgressBar
+    <!-- Линия прогресса к дневной цели под надписями (картинку рисует StepService) -->
+    <ImageView
         android:id="@+id/notif_progress"
         android:layout_width="match_parent"
         android:layout_height="4dp"
         android:layout_marginTop="6dp"
-        android:indeterminate="false"
-        android:max="100"
-        android:maxHeight="4dp"
-        android:minHeight="4dp"
-        android:progress="0"
-        android:progressDrawable="@drawable/progress_goal" />
+        android:contentDescription="@null"
+        android:scaleType="fitXY" />
 </LinearLayout>
