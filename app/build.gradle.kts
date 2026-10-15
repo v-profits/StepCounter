@@ -3,6 +3,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp") // генерация кода для Room
 }
 
 android {
@@ -48,6 +49,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")   // collectAsStateWithLifecycle
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0") // корутины
     implementation("com.google.android.material:material:1.12.0")    // нужна для XML-темы приложения
+
+    // Room — база данных SQLite с удобным Kotlin-API
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")        // поддержка корутин и Flow
+    ksp("androidx.room:room-compiler:2.6.1")              // генератор кода Room (через KSP)
 
     debugImplementation("androidx.compose.ui:ui-tooling")            // инструменты отладки UI
 }

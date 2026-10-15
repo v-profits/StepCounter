@@ -4,14 +4,18 @@ import android.app.Application
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stepcounter.StepCounterApp
+import com.example.stepcounter.data.CsvExporter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 /**
@@ -51,4 +55,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setWeight(value: Int) = repo.updateSettings { it.copy(weightKg = value) }        // вес
     fun fillDemoData() = repo.fillDemoData()                                             // демо-данные
     fun clearHistory() = repo.clearHistory()                                             // стереть историю
+
+    /**
+     * Сохраняет статистику в CSV-файл [uri] (его выбрал пользователь в системном окне).
+     * Запись идёт в фоновом потоке; по окончании вызывается [onResult] (true — успешно).
+     */
+    fun exportCsv(uri: Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    CsvExporter.write(getApplication<Application>(), uri, repo.history.value, repo.settings.value)
+                }.isSuccess
+            }
+            onResult(ok)
+        }
+    }
 }

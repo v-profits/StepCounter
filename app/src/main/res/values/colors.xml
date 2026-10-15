@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0B8F6E</color>
+
+    <!-- Цвета виджета (светлая тема) -->
+    <color name="widget_bg">#FFFFFF</color>
+    <color name="widget_text">#0E1A16</color>
+    <color name="widget_text_secondary">#4A5C55</color>
 </resources>

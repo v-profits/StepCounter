@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Цвета виджета в тёмной теме системы -->
+<resources>
+    <color name="widget_bg">#121C18</color>
+    <color name="widget_text">#E0EBE6</color>
+    <color name="widget_text_secondary">#A9BDB4</color>
+</resources>

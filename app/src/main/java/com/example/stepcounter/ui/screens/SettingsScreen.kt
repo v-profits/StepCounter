@@ -43,6 +43,7 @@ fun SettingsScreen(
     onGoal: (Int) -> Unit,
     onStepLength: (Int) -> Unit,
     onWeight: (Int) -> Unit,
+    onExport: () -> Unit,
     onDemo: () -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
@@ -98,6 +99,15 @@ fun SettingsScreen(
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Данные", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                // Экспорт статистики в файл CSV (откроется в Excel / Google Таблицах)
+                FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
+                    Text("Экспорт статистики в CSV")
+                }
+                Text(
+                    "Файл можно открыть в Excel или Google Таблицах. Вы сами выберете, куда его сохранить.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                )
                 FilledTonalButton(onClick = onDemo, modifier = Modifier.fillMaxWidth()) {
                     Text("Заполнить демо-данными")
                 }

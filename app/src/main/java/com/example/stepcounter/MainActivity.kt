@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -93,6 +94,19 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
         if (permissionGranted && vm.sensorAvailable) StepService.start(context)
     }
 
+    // Системное окно «Сохранить как…» для CSV; в лямбде — что делать после выбора файла
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) { // null — пользователь отменил
+            vm.exportCsv(uri) { ok ->
+                Toast.makeText(
+                    context,
+                    if (ok) "Статистика сохранена" else "Не удалось сохранить файл",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
     // При первом показе экрана просим разрешения, если их ещё нет
     LaunchedEffect(Unit) {
         if (!permissionGranted) launcher.launch(requiredPermissions())
@@ -162,6 +176,13 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                             onGoal = vm::setGoal,
                             onStepLength = vm::setStepLength,
                             onWeight = vm::setWeight,
+                            onExport = {
+                                if (history.isEmpty()) {
+                                    Toast.makeText(context, "Пока нет данных для экспорта", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    exportLauncher.launch("steps_$today.csv") // предлагаемое имя файла
+                                }
+                            },
                             onDemo = vm::fillDemoData,
                             onReset = vm::clearHistory,
                             modifier = Modifier.fillMaxSize(),
