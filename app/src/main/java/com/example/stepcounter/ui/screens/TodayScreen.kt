@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -72,7 +73,7 @@ fun TodayScreen(
     ) {
         // Заголовок и дата
         Column(Modifier.padding(top = 12.dp)) {
-            Text("Сегодня", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tab_today), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Text(today.fullTitle(), style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
         }
 
@@ -102,7 +103,7 @@ fun TodayScreen(
                             maxLines = 1,
                         )
                         Text(
-                            "из ${goal.formatSteps()} шагов",
+                            stringResource(R.string.today_of_goal, goal.formatSteps()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = cs.onSurfaceVariant,
                         )
@@ -112,7 +113,7 @@ fun TodayScreen(
                 // Плашка с процентом выполнения цели
                 Surface(shape = CircleShape, color = cs.primaryContainer) {
                     Text(
-                        "${(progress * 100).toInt()}% от цели",
+                        stringResource(R.string.today_percent, (progress * 100).toInt()),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
@@ -122,8 +123,8 @@ fun TodayScreen(
                 Spacer(Modifier.height(10.dp))
                 // Мотивирующий текст: цель выполнена или сколько осталось
                 Text(
-                    text = if (steps >= goal) "Цель выполнена — так держать! 🎉"
-                    else "Осталось ${(goal - steps).formatSteps()} шагов до цели",
+                    text = if (steps >= goal) stringResource(R.string.today_goal_done)
+                    else stringResource(R.string.today_remaining, (goal - steps).formatSteps()),
                     style = MaterialTheme.typography.bodyLarge,
                     color = cs.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -136,8 +137,8 @@ fun TodayScreen(
             StatCard(
                 painter = rememberVectorPainter(Icons.Rounded.Place),
                 value = settings.distanceKm(steps).formatKm(),
-                unit = "км",
-                label = "Дистанция",
+                unit = stringResource(R.string.unit_km),
+                label = stringResource(R.string.stat_distance),
                 container = cs.primaryContainer,
                 content = cs.onPrimaryContainer,
                 modifier = Modifier.weight(1f),
@@ -145,8 +146,8 @@ fun TodayScreen(
             StatCard(
                 painter = rememberVectorPainter(Icons.Rounded.LocalFireDepartment),
                 value = settings.calories(steps).formatKcal(),
-                unit = "ккал",
-                label = "Калории",
+                unit = stringResource(R.string.unit_kcal),
+                label = stringResource(R.string.stat_calories),
                 container = cs.secondaryContainer,
                 content = cs.onSecondaryContainer,
                 modifier = Modifier.weight(1f),
@@ -154,8 +155,8 @@ fun TodayScreen(
             StatCard(
                 painter = rememberVectorPainter(Icons.Rounded.EmojiEvents),
                 value = streak.toString(),
-                unit = "дн.",
-                label = "Серия",
+                unit = stringResource(R.string.unit_days_short),
+                label = stringResource(R.string.stat_streak),
                 container = cs.tertiaryContainer,
                 content = cs.onTertiaryContainer,
                 modifier = Modifier.weight(1f),
@@ -168,9 +169,9 @@ fun TodayScreen(
             colors = CardDefaults.cardColors(containerColor = cs.surface),
         ) {
             Column(Modifier.padding(20.dp)) {
-                Text("Последние 7 дней", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.today_last7), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Пунктир — ваша цель",
+                    stringResource(R.string.today_goal_dashed),
                     style = MaterialTheme.typography.labelMedium,
                     color = cs.onSurfaceVariant,
                 )

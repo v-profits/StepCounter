@@ -2,6 +2,7 @@ package com.example.stepcounter
 
 import android.app.Application
 import com.example.stepcounter.data.StepRepository
+import com.example.stepcounter.util.AppLocale
 
 /**
  * Класс приложения. Создаётся системой ОДИН раз при запуске процесса — раньше
@@ -18,5 +19,7 @@ class StepCounterApp : Application() {
     override fun onCreate() {
         super.onCreate()
         repository = StepRepository(this)
+        // Применяем язык, выбранный пользователем (до создания экранов, сервиса и виджета)
+        AppLocale.set(repository.settings.value.language)
     }
 }

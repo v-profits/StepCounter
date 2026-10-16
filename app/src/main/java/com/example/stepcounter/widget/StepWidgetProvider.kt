@@ -15,6 +15,7 @@ import com.example.stepcounter.util.formatKcal
 import com.example.stepcounter.util.formatKm
 import com.example.stepcounter.util.ProgressLine
 import com.example.stepcounter.util.formatSteps
+import com.example.stepcounter.util.withAppLocale
 
 /**
  * Виджет рабочего стола размером 3x1: по виду повторяет уведомление в шторке — шаги, калории
@@ -50,11 +51,12 @@ class StepWidgetProvider : AppWidgetProvider() {
         /** Собирает внешний вид виджета: значения, полоску прогресса и реакцию на нажатие. */
         private fun buildViews(context: Context, steps: Int, settings: UserSettings): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_steps)
+            val ctx = context.withAppLocale() // контекст с выбранным языком — для единиц измерения
 
-            // Значения — как в уведомлении: шаги, калории с единицей, километры с единицей
+            // Значения — как в уведомлении (единицы берутся из строк, поэтому зависят от языка)
             views.setTextViewText(R.id.widget_steps, steps.formatSteps())
-            views.setTextViewText(R.id.widget_kcal, "${settings.calories(steps).formatKcal()} ккал")
-            views.setTextViewText(R.id.widget_km, "${settings.distanceKm(steps).formatKm()} км")
+            views.setTextViewText(R.id.widget_kcal, ctx.getString(R.string.value_kcal, settings.calories(steps).formatKcal()))
+            views.setTextViewText(R.id.widget_km, ctx.getString(R.string.value_km, settings.distanceKm(steps).formatKm()))
 
             // Линия прогресса под надписями: доля шагов от цели (рисуется картинкой)
             val progress = steps / settings.goal.coerceAtLeast(1).toFloat()

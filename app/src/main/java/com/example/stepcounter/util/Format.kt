@@ -1,5 +1,6 @@
 package com.example.stepcounter.util
 
+import android.text.format.DateFormat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -7,38 +8,35 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-// Русская локаль: даёт русские названия дней/месяцев и запятую в дробях
-val RU: Locale = Locale.forLanguageTag("ru")
+// Текущий язык приложения (выбранный в настройках или язык телефона).
+// Берём при каждом вызове, чтобы форматирование сразу следовало смене языка.
+private val locale: Locale get() = AppLocale.current
 
-/** 12345 -> "12 345" (с разделителем тысяч). */
-fun Int.formatSteps(): String = String.format(RU, "%,d", this)
+/** 12345 -> "12 345" (рус.) или "12,345" (англ.) — с разделителем тысяч. */
+fun Int.formatSteps(): String = String.format(locale, "%,d", this)
 
-/** 5.43 -> "5,4" (один знак после запятой). */
-fun Double.formatKm(): String = String.format(RU, "%.1f", this)
+/** 5.43 -> "5,4" (рус.) или "5.4" (англ.) — один знак после запятой. */
+fun Double.formatKm(): String = String.format(locale, "%.1f", this)
 
 /** 278.6 -> "279" (округление до целого). */
-fun Double.formatKcal(): String = String.format(RU, "%,d", this.roundToInt())
+fun Double.formatKcal(): String = String.format(locale, "%,d", this.roundToInt())
 
-/** Дата -> "Среда, 14 октября" (первая буква заглавная). */
-fun LocalDate.fullTitle(): String =
-    format(DateTimeFormatter.ofPattern("EEEE, d MMMM", RU)).replaceFirstChar { it.uppercase() }
+/** Дата -> "Среда, 14 октября" / "Wednesday, October 14" (порядок слов зависит от языка). */
+fun LocalDate.fullTitle(): String {
+    val pattern = DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM")
+    return DateTimeFormatter.ofPattern(pattern, locale).format(this).replaceFirstChar { it.uppercase() }
+}
 
-/** Дата -> "Ср" (короткое название дня недели). */
+/** Дата -> "Ср" / "Wed" (короткое название дня недели). */
 fun LocalDate.shortWeekday(): String =
-    dayOfWeek.getDisplayName(TextStyle.SHORT, RU).replaceFirstChar { it.uppercase() }
+    dayOfWeek.getDisplayName(TextStyle.SHORT, locale).replaceFirstChar { it.uppercase() }
 
-/** Дата -> "14 окт" (число и месяц). */
-fun LocalDate.dayMonth(): String = format(DateTimeFormatter.ofPattern("d MMM", RU))
+/** Дата -> "14 окт." / "Oct 14" (число и месяц). */
+fun LocalDate.dayMonth(): String =
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "dMMM"), locale).format(this)
 
-// Названия месяцев заданы вручную, чтобы выглядели одинаково на всех телефонах
-private val MONTHS_SHORT = listOf("Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек")
-private val MONTHS_FULL = listOf(
-    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
-)
+/** Месяц -> "Окт" / "Oct". [names] — массив из ресурсов (months_short). */
+fun YearMonth.shortName(names: Array<String>): String = names[monthValue - 1]
 
-/** Месяц -> "Окт". */
-fun YearMonth.shortName(): String = MONTHS_SHORT[monthValue - 1]
-
-/** Месяц -> "Октябрь 2026". */
-fun YearMonth.fullName(): String = "${MONTHS_FULL[monthValue - 1]} $year"
+/** Месяц -> "Октябрь 2026" / "October 2026". [names] — массив из ресурсов (months_full). */
+fun YearMonth.fullName(names: Array<String>): String = "${names[monthValue - 1]} $year"

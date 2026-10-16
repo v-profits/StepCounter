@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stepcounter.StepCounterApp
 import com.example.stepcounter.data.CsvExporter
+import com.example.stepcounter.util.AppLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +54,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setGoal(value: Int) = repo.updateSettings { it.copy(goal = value) }              // изменить цель
     fun setStepLength(value: Int) = repo.updateSettings { it.copy(stepLengthCm = value) } // длина шага
     fun setWeight(value: Int) = repo.updateSettings { it.copy(weightKg = value) }        // вес
+    fun setTheme(mode: Int) = repo.updateSettings { it.copy(themeMode = mode) }          // тема: система / светлая / тёмная
+    fun setLanguage(tag: String) {                                                      // язык: "" = система, "en", "ru"
+        AppLocale.set(tag)
+        repo.updateSettings { it.copy(language = tag) }
+    }
     fun fillDemoData() = repo.fillDemoData()                                             // демо-данные
     fun clearHistory() = repo.clearHistory()                                             // стереть историю
 

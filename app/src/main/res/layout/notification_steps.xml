@@ -59,7 +59,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:maxLines="1"
-                android:text="0 ккал"
+                android:text="@string/placeholder_kcal"
                 android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -85,7 +85,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:maxLines="1"
-                android:text="0 км"
+                android:text="@string/placeholder_km"
                 android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
                 android:textSize="15sp"
                 android:textStyle="bold" />

@@ -26,6 +26,7 @@ import com.example.stepcounter.util.ProgressLine
 import com.example.stepcounter.util.formatKcal
 import com.example.stepcounter.util.formatKm
 import com.example.stepcounter.util.formatSteps
+import com.example.stepcounter.util.withAppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -127,14 +128,15 @@ class StepService : Service(), SensorEventListener {
      */
     private fun buildNotification(steps: Int, settings: UserSettings): Notification {
         val goal = settings.goal
+        val ctx = withAppLocale() // контекст с выбранным языком — для текстов уведомления
         val kcal = settings.calories(steps).formatKcal()
         val km = settings.distanceKm(steps).formatKm()
 
         // Заполняем макет уведомления значениями
         val content = RemoteViews(packageName, R.layout.notification_steps).apply {
             setTextViewText(R.id.notif_steps, steps.formatSteps())
-            setTextViewText(R.id.notif_kcal, "$kcal ккал")
-            setTextViewText(R.id.notif_km, "$km км")
+            setTextViewText(R.id.notif_kcal, ctx.getString(R.string.value_kcal, kcal))
+            setTextViewText(R.id.notif_km, ctx.getString(R.string.value_km, km))
             // Линия прогресса под надписями: доля шагов от цели (рисуется картинкой)
             setImageViewBitmap(R.id.notif_progress, ProgressLine.draw(steps / goal.coerceAtLeast(1).toFloat()))
         }
@@ -151,7 +153,7 @@ class StepService : Service(), SensorEventListener {
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())   // система рисует рамку, мы — содержимое
             .setCustomContentView(content)                             // наш макет с иконками
             .setContentTitle(steps.formatSteps())                      // запасной текст (там, где свой макет не показывается)
-            .setContentText("$kcal ккал · $km км")
+            .setContentText("${ctx.getString(R.string.value_kcal, kcal)} · ${ctx.getString(R.string.value_km, km)}")
             .setOngoing(true)                                          // нельзя смахнуть (на старых версиях)
             .setOnlyAlertOnce(true)                                    // не пищать при обновлении
             .setSilent(true)

@@ -1,0 +1,133 @@
+<resources>
+    <!-- Русский язык: используется, если язык телефона — русский -->
+    <string name="app_name">Шагомер</string>
+    <string name="channel_name">Подсчёт шагов</string>
+    <string name="widget_description">Шаги, калории и дистанция за сегодня</string>
+
+    <!-- Единицы и значения -->
+    <string name="unit_kcal">ккал</string>
+    <string name="unit_km">км</string>
+    <string name="unit_days_short">дн.</string>
+    <string name="unit_steps">шагов</string>
+    <string name="unit_cm">см</string>
+    <string name="unit_kg">кг</string>
+    <string name="value_kcal">%1$s ккал</string>
+    <string name="value_km">%1$s км</string>
+    <string name="placeholder_kcal">0 ккал</string>
+    <string name="placeholder_km">0 км</string>
+
+    <!-- Вкладки -->
+    <string name="tab_today">Сегодня</string>
+    <string name="tab_stats">Статистика</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Баннеры и сообщения -->
+    <string name="banner_no_sensor">На этом устройстве нет датчика шагов. Реальный подсчёт недоступен — но можно посмотреть интерфейс на демо-данных (Настройки).</string>
+    <string name="banner_permission">Нужен доступ к физической активности, чтобы считать шаги.</string>
+    <string name="btn_allow">Разрешить</string>
+    <string name="btn_open_settings">Настройки</string>
+    <string name="toast_export_ok">Статистика сохранена</string>
+    <string name="toast_export_fail">Не удалось сохранить файл</string>
+    <string name="toast_no_data">Пока нет данных для экспорта</string>
+
+    <!-- Экран «Сегодня» -->
+    <string name="today_of_goal">из %1$s шагов</string>
+    <string name="today_percent">%1$d%% от цели</string>
+    <string name="today_goal_done">Цель выполнена — так держать! 🎉</string>
+    <string name="today_remaining">Осталось %1$s шагов до цели</string>
+    <string name="stat_distance">Дистанция</string>
+    <string name="stat_calories">Калории</string>
+    <string name="stat_streak">Серия</string>
+    <string name="today_last7">Последние 7 дней</string>
+    <string name="today_goal_dashed">Пунктир — ваша цель</string>
+
+    <!-- Экран «Статистика» -->
+    <string name="period_week">Неделя</string>
+    <string name="period_month">Месяц</string>
+    <string name="period_year">Год</string>
+    <string name="stats_avg_per_day_sub">в среднем %1$s в день</string>
+    <string name="stats_steps_count">%1$s шагов</string>
+    <string name="stats_chart_year">Среднее в день по месяцам</string>
+    <string name="stats_chart_days">Шаги по дням</string>
+    <string name="stats_chart_hint">Нажмите на столбец, чтобы увидеть подробности · пунктир — цель</string>
+    <string name="sum_total">Всего шагов</string>
+    <string name="sum_total_sub">≈ %1$s км</string>
+    <string name="sum_avg">В среднем в день</string>
+    <string name="sum_avg_sub">цель %1$s</string>
+    <string name="sum_best">Лучший день</string>
+    <string name="sum_no_data">нет данных</string>
+    <string name="sum_goal_days">Цель выполнена</string>
+    <string name="sum_days_value">%1$d дн.</string>
+    <string name="sum_of">из %1$d</string>
+    <string name="stats_by_month">По месяцам</string>
+    <string name="stats_history">История</string>
+    <string name="stats_empty">Данных пока нет — пройдитесь, и здесь появится статистика.</string>
+
+    <!-- Экран «Настройки» -->
+    <string name="set_goal">Дневная цель</string>
+    <string name="set_step_length">Длина шага</string>
+    <string name="set_weight">Вес</string>
+    <string name="set_hint">Длина шага и вес нужны для расчёта дистанции и калорий — это приблизительные оценки.</string>
+    <string name="how_title">Как это работает</string>
+    <string name="how_body">Шаги считает встроенный датчик телефона. Приложение работает в фоне и показывает уведомление с прогрессом — так шаги правильно распределяются по дням. После перезагрузки телефона подсчёт возобновляется сам.</string>
+    <string name="data_title">Данные</string>
+    <string name="btn_export">Экспорт статистики в CSV</string>
+    <string name="export_hint">Файл можно открыть в Excel или Google Таблицах. Вы сами выберете, куда его сохранить.</string>
+    <string name="btn_demo">Заполнить демо-данными</string>
+    <string name="demo_hint">Добавит случайные шаги за прошлые 29 дней — удобно, чтобы посмотреть интерфейс на эмуляторе.</string>
+    <string name="btn_delete_all">Удалить всю историю</string>
+    <string name="dlg_delete_title">Удалить историю?</string>
+    <string name="dlg_delete_text">Все сохранённые шаги будут удалены. Это действие нельзя отменить.</string>
+    <string name="dlg_delete_confirm">Удалить</string>
+    <string name="dlg_cancel">Отмена</string>
+    <string name="support_title">Поддержать разработчика</string>
+    <string name="support_text">Приложение бесплатное и без рекламы. Если оно вам полезно, можно поддержать разработку добровольным пожертвованием.</string>
+    <string name="support_button">Поддержать</string>
+
+    <!-- Заголовки CSV -->
+    <string name="csv_date">Дата</string>
+    <string name="csv_steps">Шаги</string>
+    <string name="csv_distance">Дистанция (км)</string>
+    <string name="csv_calories">Калории (ккал)</string>
+    <string name="csv_goal">Цель выполнена</string>
+    <string name="csv_yes">да</string>
+    <string name="csv_no">нет</string>
+
+    <!-- Названия месяцев -->
+    <string-array name="months_short">
+        <item>Янв</item>
+        <item>Фев</item>
+        <item>Мар</item>
+        <item>Апр</item>
+        <item>Май</item>
+        <item>Июн</item>
+        <item>Июл</item>
+        <item>Авг</item>
+        <item>Сен</item>
+        <item>Окт</item>
+        <item>Ноя</item>
+        <item>Дек</item>
+    </string-array>
+    <string-array name="months_full">
+        <item>Январь</item>
+        <item>Февраль</item>
+        <item>Март</item>
+        <item>Апрель</item>
+        <item>Май</item>
+        <item>Июнь</item>
+        <item>Июль</item>
+        <item>Август</item>
+        <item>Сентябрь</item>
+        <item>Октябрь</item>
+        <item>Ноябрь</item>
+        <item>Декабрь</item>
+    </string-array>
+
+    <!-- Оформление -->
+    <string name="appearance_title">Оформление</string>
+    <string name="theme_title">Тема</string>
+    <string name="language_title">Язык</string>
+    <string name="opt_system">Как в системе</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+</resources>

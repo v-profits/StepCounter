@@ -35,10 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.stepcounter.R
 import com.example.stepcounter.data.UserSettings
 import com.example.stepcounter.data.periodDays
 import com.example.stepcounter.data.periodMonths
@@ -75,6 +78,15 @@ fun StatsScreen(
     val length = when (period) { 0 -> 7; 1 -> 30; else -> 365 } // сколько дней входит в период
     val isYear = period == 2
 
+    // Названия месяцев на языке приложения
+    val monthsShort = stringArrayResource(R.array.months_short)
+    val monthsFull = stringArrayResource(R.array.months_full)
+    val periodLabels = listOf(
+        stringResource(R.string.period_week),
+        stringResource(R.string.period_month),
+        stringResource(R.string.period_year),
+    )
+
     val days = remember(history, today, length) { periodDays(history, today, length) } // дни периода
     // Самая ранняя дата, за которую есть запись
     val first = remember(history) { history.keys.minByOrNull { it.toEpochDay() } }
@@ -93,9 +105,9 @@ fun StatsScreen(
     val detailSub: String?
     if (isYear) {
         val m = months.firstOrNull { it.month == selectedMonth } ?: months.last()
-        detailTitle = m.month.fullName()
+        detailTitle = m.month.fullName(monthsFull)
         detailSteps = m.total
-        detailSub = "в среднем ${m.average.formatSteps()} в день"
+        detailSub = stringResource(R.string.stats_avg_per_day_sub, m.average.formatSteps())
     } else {
         detailTitle = selectedDay.fullTitle()
         detailSteps = history[selectedDay] ?: 0
@@ -109,7 +121,7 @@ fun StatsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            "Статистика",
+            stringResource(R.string.tab_stats),
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp),
@@ -117,7 +129,7 @@ fun StatsScreen(
 
         // Переключатель «Неделя / Месяц / Год»
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            listOf("Неделя", "Месяц", "Год").forEachIndexed { i, label ->
+            periodLabels.forEachIndexed { i, label ->
                 SegmentedButton(
                     selected = period == i,
                     onClick = { period = i },
@@ -138,7 +150,7 @@ fun StatsScreen(
                 Column(Modifier.weight(1f)) {
                     Text(detailTitle, style = MaterialTheme.typography.labelLarge)
                     Text(
-                        "${detailSteps.formatSteps()} шагов",
+                        stringResource(R.string.stats_steps_count, detailSteps.formatSteps()),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                     )
@@ -147,8 +159,8 @@ fun StatsScreen(
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("${settings.distanceKm(detailSteps).formatKm()} км", style = MaterialTheme.typography.titleMedium)
-                    Text("${settings.calories(detailSteps).formatKcal()} ккал", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.value_km, settings.distanceKm(detailSteps).formatKm()), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.value_kcal, settings.calories(detailSteps).formatKcal()), style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
@@ -157,12 +169,12 @@ fun StatsScreen(
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
             Column(Modifier.padding(20.dp)) {
                 Text(
-                    if (isYear) "Среднее в день по месяцам" else "Шаги по дням",
+                    if (isYear) stringResource(R.string.stats_chart_year) else stringResource(R.string.stats_chart_days),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Нажмите на столбец, чтобы увидеть подробности · пунктир — цель",
+                    stringResource(R.string.stats_chart_hint),
                     style = MaterialTheme.typography.labelMedium,
                     color = cs.onSurfaceVariant,
                 )
@@ -170,7 +182,7 @@ fun StatsScreen(
                 // Превращаем данные в столбцы
                 val entries = if (isYear) {
                     // Год: столбец = месяц, высота = среднее число шагов в день
-                    months.map { BarEntry(label = it.month.shortName(), value = it.average, selected = it.month == selectedMonth) }
+                    months.map { BarEntry(label = it.month.shortName(monthsShort), value = it.average, selected = it.month == selectedMonth) }
                 } else {
                     // Неделя/месяц: столбец = день (в месяце подписываем каждый 5-й день)
                     days.mapIndexed { i, d ->
@@ -196,25 +208,25 @@ fun StatsScreen(
         // Итоги за период — две строки по две карточки одинаковой высоты
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SummaryCard(
-                "Всего шагов", summary.total.formatSteps(),
-                "≈ ${settings.distanceKm(summary.total).formatKm()} км",
+                stringResource(R.string.sum_total), summary.total.formatSteps(),
+                stringResource(R.string.sum_total_sub, settings.distanceKm(summary.total).formatKm()),
                 Modifier.weight(1f).fillMaxHeight(),
             )
             SummaryCard(
-                "В среднем в день", summary.average.formatSteps(),
-                "цель ${goal.formatSteps()}",
+                stringResource(R.string.sum_avg), summary.average.formatSteps(),
+                stringResource(R.string.sum_avg_sub, goal.formatSteps()),
                 Modifier.weight(1f).fillMaxHeight(),
             )
         }
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SummaryCard(
-                "Лучший день", summary.best?.steps?.formatSteps() ?: "—",
-                summary.best?.date?.dayMonth() ?: "нет данных",
+                stringResource(R.string.sum_best), summary.best?.steps?.formatSteps() ?: "—",
+                summary.best?.date?.dayMonth() ?: stringResource(R.string.sum_no_data),
                 Modifier.weight(1f).fillMaxHeight(),
             )
             SummaryCard(
-                "Цель выполнена", "${summary.goalDays} дн.",
-                if (summary.countedDays > 0) "из ${summary.countedDays}" else "нет данных",
+                stringResource(R.string.sum_goal_days), stringResource(R.string.sum_days_value, summary.goalDays),
+                if (summary.countedDays > 0) stringResource(R.string.sum_of, summary.countedDays) else stringResource(R.string.sum_no_data),
                 Modifier.weight(1f).fillMaxHeight(),
             )
         }
@@ -223,14 +235,14 @@ fun StatsScreen(
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Text(
-                    if (isYear) "По месяцам" else "История",
+                    if (isYear) stringResource(R.string.stats_by_month) else stringResource(R.string.stats_history),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 val hasData = first != null
                 if (!hasData) {
                     Text(
-                        "Данных пока нет — пройдитесь, и здесь появится статистика.",
+                        stringResource(R.string.stats_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = cs.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp),
@@ -240,7 +252,7 @@ fun StatsScreen(
                     // Строка на каждый месяц: полоска показывает среднее в день относительно цели
                     months.reversed().filter { it.daysCounted > 0 }.forEach { m ->
                         ProgressRow(
-                            label = "${m.month.shortName()} ${m.month.year}",
+                            label = "${m.month.shortName(monthsShort)} ${m.month.year}",
                             labelWidth = 84.dp,
                             fraction = m.average / goal.toFloat(),
                             valueText = m.total.formatSteps(),
