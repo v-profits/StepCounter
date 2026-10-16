@@ -212,6 +212,7 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                             onGoal = vm::setGoal,
                             onStepLength = vm::setStepLength,
                             onWeight = vm::setWeight,
+                            onResetToday = vm::resetToday,
                             onTheme = vm::setTheme,
                             onLanguage = { tag ->
                                 vm.setLanguage(tag)

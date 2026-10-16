@@ -130,4 +130,10 @@
     <string name="opt_system">Как в системе</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
+
+    <!-- Обнуление шагов за сегодня -->
+    <string name="btn_reset_today">Обнулить шаги за сегодня</string>
+    <string name="dlg_reset_today_title">Обнулить шаги за сегодня?</string>
+    <string name="dlg_reset_today_text">Шаги за сегодня будут обнулены. Данные за прошлые дни не изменятся.</string>
+    <string name="dlg_reset_today_confirm">Обнулить</string>
 </resources>

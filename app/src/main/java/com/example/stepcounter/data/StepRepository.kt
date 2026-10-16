@@ -17,7 +17,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.random.Random
 
 /** Варианты темы оформления. */
@@ -108,23 +112,87 @@ class StepRepository(context: Context) {
     /**
      * Вызывается сервисом при каждом новом показании датчика.
      * [value] — общее число шагов с момента загрузки телефона.
+     *
+     * Защита от ошибок подсчёта:
+     *  1) Нереальная скорость. За время между показаниями человек не пройдёт больше
+     *     ~200 шагов в минуту (это бег). Если показание датчика «скакнуло» сильнее
+     *     (сбой датчика, эмулятор), лишнее отбрасывается.
+     *  2) Долгий перерыв. Если сервис не работал (телефон был выключен, система закрыла приложение),
+     *     а датчик продолжал считать, накопленные шаги распределяются по дням перерыва,
+     *     а не записываются целиком на сегодня.
+     *  3) Лимит на день: не больше [MAX_STEPS_PER_DAY] шагов автоматически.
      */
     fun onCounterValue(value: Long) {
-        // Считаем, сколько шагов прибавилось с прошлого показания
-        val delta = synchronized(lock) {
-            val last = prefs.getLong(KEY_LAST_COUNTER, -1L) // -1, если ещё ни разу не сохраняли
-            prefs.edit().putLong(KEY_LAST_COUNTER, value).apply()
-            when {
+        val now = System.currentTimeMillis()
+        // Считаем, сколько шагов прибавилось с прошлого показания, и когда оно было
+        val (delta, fromMs) = synchronized(lock) {
+            val last = prefs.getLong(KEY_LAST_COUNTER, -1L)       // -1, если ещё ни разу не сохраняли
+            val lastTime = prefs.getLong(KEY_LAST_TIME, now)      // время прошлого показания
+            prefs.edit().putLong(KEY_LAST_COUNTER, value).putLong(KEY_LAST_TIME, now).apply()
+
+            val raw = when {
                 last < 0 -> 0L                // первое показание — просто точка отсчёта
                 value >= last -> value - last // обычный случай: прибавилось столько шагов
                 else -> value                 // значение уменьшилось => телефон перезагружался, счёт с нуля
             }
+            // Сколько шагов максимум можно пройти за это время (минимум считаем 1 минуту)
+            val gapMinutes = max(now - lastTime, MIN_GAP_MS) / 60_000.0
+            val maxPlausible = (gapMinutes * MAX_STEPS_PER_MINUTE).toLong() + 200
+            Pair(min(raw, maxPlausible), lastTime)
         }
-        if (delta > 0) {
-            // Дату берём сейчас (а не когда выполнится запись), чтобы шаги попали в правильный день
-            val date = LocalDate.now().toString()
-            scope.launch { dao.addSteps(date, delta.toInt()) }
+        if (delta <= 0) return
+
+        // Делим шаги по дням (обычно — один день), проверяем дневной лимит и записываем в базу
+        val parts = splitAcrossDays(delta, fromMs, now)
+        scope.launch {
+            for ((date, steps) in parts) {
+                val allowed = (MAX_STEPS_PER_DAY - (history.value[date] ?: 0)).coerceAtLeast(0)
+                val add = min(steps, allowed)
+                if (add > 0) dao.addSteps(date.toString(), add)
+            }
         }
+    }
+
+    /**
+     * Делит [steps] между днями, которые попали в промежуток [fromMs]..[toMs],
+     * пропорционально времени, прошедшему в каждом дне. Если оба момента в одном дне — всё идёт на этот день.
+     */
+    private fun splitAcrossDays(steps: Long, fromMs: Long, toMs: Long): List<Pair<LocalDate, Int>> {
+        val zone = ZoneId.systemDefault()
+        val firstDay = Instant.ofEpochMilli(fromMs).atZone(zone).toLocalDate()
+        val lastDay = Instant.ofEpochMilli(toMs).atZone(zone).toLocalDate()
+        val total = steps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
+        // Обычный случай: оба показания в один день (или часы переведены назад)
+        if (!firstDay.isBefore(lastDay)) return listOf(lastDay to total)
+
+        // Все дни перерыва (учитываем не больше последних 366)
+        val days = ArrayList<LocalDate>()
+        var d = firstDay
+        while (!d.isAfter(lastDay)) {
+            days.add(d)
+            d = d.plusDays(1)
+        }
+        val used = days.takeLast(366)
+
+        // «Вес» дня — сколько времени перерыва пришлось на этот день
+        val weights = used.map { day ->
+            val dayStart = day.atStartOfDay(zone).toInstant().toEpochMilli()
+            val dayEnd = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            (min(toMs, dayEnd) - max(fromMs, dayStart)).coerceAtLeast(0L)
+        }
+        val weightSum = weights.sum()
+        if (weightSum <= 0L) return listOf(lastDay to total)
+
+        // Раздаём шаги пропорционально; остаток от округления получает последний день
+        val result = ArrayList<Pair<LocalDate, Int>>()
+        var given = 0
+        used.forEachIndexed { i, day ->
+            val part = if (i == used.lastIndex) total - given else (total.toLong() * weights[i] / weightSum).toInt()
+            given += part
+            result.add(day to part)
+        }
+        return result
     }
 
     /** Меняет настройки: [transform] получает старые и возвращает новые. Сохраняет на диск. */
@@ -138,6 +206,11 @@ class StepRepository(context: Context) {
             .putString(KEY_LANGUAGE, s.language)
             .apply()
         _settings.value = s
+    }
+
+    /** Обнуляет шаги за сегодня (например, после сбоя датчика). Прошлые дни не трогаем. */
+    fun resetToday() {
+        scope.launch { dao.deleteDay(LocalDate.now().toString()) }
     }
 
     /** Удаляет всю историю шагов (настройки остаются). Интерфейс обновится сам через Flow. */
@@ -208,6 +281,10 @@ class StepRepository(context: Context) {
         const val KEY_DAY = "d_"                      // префикс ключей дней в СТАРОМ хранилище
         const val KEY_MIGRATED = "migrated_to_room"   // флаг «перенос в Room выполнен»
         const val KEY_LAST_COUNTER = "last_counter"   // последнее показание датчика
+        const val KEY_LAST_TIME = "last_counter_time" // время последнего показания (мс)
+        const val MAX_STEPS_PER_MINUTE = 200          // быстрее — нереально (даже бег ~180)
+        const val MIN_GAP_MS = 60_000L                // минимальный учитываемый промежуток — 1 минута
+        const val MAX_STEPS_PER_DAY = 100_000         // больше за сутки автоматически не засчитываем
         const val KEY_GOAL = "goal"
         const val KEY_STEP_LENGTH = "step_length_cm"
         const val KEY_WEIGHT = "weight_kg"

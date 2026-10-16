@@ -48,6 +48,10 @@ abstract class StepDao {
     @Query("UPDATE daily_steps SET steps = steps + :delta WHERE date = :date")
     abstract suspend fun addToRow(date: String, delta: Int)
 
+    /** Удалить запись одного дня (используется для «Обнулить шаги за сегодня»). */
+    @Query("DELETE FROM daily_steps WHERE date = :date")
+    abstract suspend fun deleteDay(date: String)
+
     /** Удалить все записи. */
     @Query("DELETE FROM daily_steps")
     abstract suspend fun clear()

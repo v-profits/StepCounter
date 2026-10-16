@@ -56,12 +56,14 @@ fun SettingsScreen(
     onTheme: (Int) -> Unit,
     onLanguage: (String) -> Unit,
     onExport: () -> Unit,
+    onResetToday: () -> Unit,
     onDemo: () -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
     var confirmReset by remember { mutableStateOf(false) } // показывать ли окно подтверждения удаления
+    var confirmResetToday by remember { mutableStateOf(false) } // окно подтверждения «обнулить сегодня»
     val uriHandler = LocalUriHandler.current                // умеет открывать ссылки в браузере
 
     Column(
@@ -182,12 +184,31 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = cs.onSurfaceVariant,
                 )
+                // Обнулить шаги за сегодня (если датчик или подсчёт ошиблись)
+                OutlinedButton(onClick = { confirmResetToday = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.btn_reset_today))
+                }
                 OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.btn_delete_all), color = cs.error)
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+
+    // Окно подтверждения «обнулить шаги за сегодня»
+    if (confirmResetToday) {
+        AlertDialog(
+            onDismissRequest = { confirmResetToday = false },
+            title = { Text(stringResource(R.string.dlg_reset_today_title)) },
+            text = { Text(stringResource(R.string.dlg_reset_today_text)) },
+            confirmButton = {
+                TextButton(onClick = { confirmResetToday = false; onResetToday() }) {
+                    Text(stringResource(R.string.dlg_reset_today_confirm), color = cs.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmResetToday = false }) { Text(stringResource(R.string.dlg_cancel)) } },
+        )
     }
 
     // Окно подтверждения удаления истории (показывается, пока confirmReset = true)

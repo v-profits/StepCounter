@@ -133,4 +133,10 @@
     <!-- Названия языков пишутся на самих языках и не переводятся -->
     <string name="lang_en" translatable="false">English</string>
     <string name="lang_ru" translatable="false">Русский</string>
+
+    <!-- Обнуление шагов за сегодня -->
+    <string name="btn_reset_today">Reset today’s steps</string>
+    <string name="dlg_reset_today_title">Reset today’s steps?</string>
+    <string name="dlg_reset_today_text">Today’s step count will be set to zero. Earlier days are not affected.</string>
+    <string name="dlg_reset_today_confirm">Reset</string>
 </resources>

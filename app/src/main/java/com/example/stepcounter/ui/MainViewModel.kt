@@ -60,6 +60,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.updateSettings { it.copy(language = tag) }
     }
     fun fillDemoData() = repo.fillDemoData()                                             // демо-данные
+    fun resetToday() = repo.resetToday()                                                 // обнулить шаги за сегодня
     fun clearHistory() = repo.clearHistory()                                             // стереть историю
 
     /**
