@@ -74,6 +74,7 @@ class StepService : Service(), SensorEventListener {
         sensorManager = sm
         // Подписываемся на показания датчика (this = onSensorChanged ниже)
         sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        repo.onSensorSessionStart() // следующее показание — первое после (пере)запуска подсчёта
 
         // Следим за данными: как только меняются шаги или настройки — обновляем уведомление
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
