@@ -8,7 +8,10 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stepcounter.StepCounterApp
+import com.example.stepcounter.data.BackupData
+import com.example.stepcounter.data.BackupManager
 import com.example.stepcounter.data.CsvExporter
+import com.example.stepcounter.data.FileSaver
 import com.example.stepcounter.util.AppLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -52,7 +55,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // Действия, которые вызываются с экрана настроек:
     fun setGoal(value: Int) = repo.updateSettings { it.copy(goal = value) }              // изменить цель
-    fun setStepLength(value: Int) = repo.updateSettings { it.copy(stepLengthCm = value) } // длина шага
+    fun setStepLength(value: Int) = repo.updateSettings { it.copy(stepLengthCm = value) } // длина шага (вручную)
+    fun setHeight(value: Int) = repo.updateSettings { it.copy(heightCm = value) }         // рост
+    fun setSex(value: Int) = repo.updateSettings { it.copy(sex = value) }                 // пол
+    /** Включает/выключает ручной ввод длины шага; при включении начинаем с рассчитанного значения. */
+    fun setStepLengthManual(enabled: Boolean) = repo.updateSettings {
+        if (enabled) it.copy(stepLengthManual = true, stepLengthCm = it.autoStepLengthCm)
+        else it.copy(stepLengthManual = false)
+    }
     fun setWeight(value: Int) = repo.updateSettings { it.copy(weightKg = value) }        // вес
     fun setTheme(mode: Int) = repo.updateSettings { it.copy(themeMode = mode) }          // тема: система / светлая / тёмная
     fun setLanguage(tag: String) {                                                      // язык: "" = система, "en", "ru"
@@ -63,17 +73,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetToday() = repo.resetToday()                                                 // обнулить шаги за сегодня
     fun clearHistory() = repo.clearHistory()                                             // стереть историю
 
+    /** Сохраняет CSV-таблицу в выбранную пользователем папку. [onResult]: true — успешно. */
+    fun saveCsv(folder: Uri, onResult: (Boolean) -> Unit) {
+        val ctx = getApplication<Application>()
+        runIo(onResult) {
+            val text = CsvExporter.build(ctx, repo.history.value, repo.settings.value)
+            FileSaver.saveToFolder(ctx, folder, "steps_${LocalDate.now()}.csv", "text/csv", text.toByteArray(Charsets.UTF_8))
+        }
+    }
+
+    /** Сохраняет файл резервной копии в выбранную пользователем папку. */
+    fun saveBackup(folder: Uri, onResult: (Boolean) -> Unit) {
+        val ctx = getApplication<Application>()
+        runIo(onResult) {
+            val text = BackupManager.build(repo.history.value, repo.settings.value)
+            FileSaver.saveToFolder(
+                ctx, folder, BackupManager.fileName(LocalDate.now()), BackupManager.MIME,
+                text.toByteArray(Charsets.UTF_8),
+            )
+        }
+    }
+
     /**
-     * Сохраняет статистику в CSV-файл [uri] (его выбрал пользователь в системном окне).
-     * Запись идёт в фоновом потоке; по окончании вызывается [onResult] (true — успешно).
+     * Читает и проверяет файл резервной копии. В [onResult] приходит результат:
+     * данные — если файл подходит, иначе ошибка (не тот файл или не удалось прочитать).
      */
-    fun exportCsv(uri: Uri, onResult: (Boolean) -> Unit) {
+    fun readBackup(uri: Uri, onResult: (Result<BackupData>) -> Unit) {
+        val ctx = getApplication<Application>()
         viewModelScope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                runCatching {
-                    CsvExporter.write(getApplication<Application>(), uri, repo.history.value, repo.settings.value)
-                }.isSuccess
+            val result = withContext(Dispatchers.IO) {
+                runCatching { BackupManager.parse(FileSaver.readText(ctx, uri)) }
             }
+            onResult(result)
+        }
+    }
+
+    /** Применяет данные из резервной копии. */
+    fun restoreBackup(data: BackupData) = repo.restoreBackup(data)
+
+    // Выполняет [block] в фоновом потоке и сообщает, получилось ли
+    private fun runIo(onResult: (Boolean) -> Unit, block: () -> Unit) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) { runCatching(block).isSuccess }
             onResult(ok)
         }
     }

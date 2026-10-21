@@ -22,6 +22,8 @@ import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /** Варианты темы оформления. */
@@ -31,19 +33,36 @@ object ThemeMode {
     const val DARK = 2    // тёмная
 }
 
+/** Пол — нужен для расчёта длины шага по росту. */
+object Sex {
+    const val MALE = 0
+    const val FEMALE = 1
+}
+
 /**
- * Настройки пользователя: цель на день, длина шага, вес, тема и язык.
+ * Настройки пользователя: цель на день, рост, пол, вес, длина шага, тема и язык.
  * data class — Kotlin сам создаёт copy(), equals(), toString() и т.д.
  */
 data class UserSettings(
     val goal: Int = 10_000,      // дневная цель, шагов
-    val stepLengthCm: Int = 75,  // длина шага, см
+    val heightCm: Int = 170,     // рост, см
+    val sex: Int = Sex.MALE,     // пол (нужен для расчёта длины шага)
     val weightKg: Int = 70,      // вес, кг
+    val stepLengthCm: Int = 75,  // длина шага, введённая ВРУЧНУЮ, см
+    val stepLengthManual: Boolean = false, // true — берём длину шага вручную, false — считаем по росту и полу
     val themeMode: Int = ThemeMode.SYSTEM, // тема: 0 — как в системе, 1 — светлая, 2 — тёмная
     val language: String = "",             // язык: "" — как в системе, "en", "ru"
 ) {
+    /** Длина шага, рассчитанная по росту и полу: рост × 0,415 (мужчины) или × 0,413 (женщины). */
+    val autoStepLengthCm: Int
+        get() = (heightCm * (if (sex == Sex.FEMALE) 0.413 else 0.415)).roundToInt()
+
+    /** Длина шага, которая используется в расчётах: введённая вручную или рассчитанная. */
+    val effectiveStepLengthCm: Int
+        get() = if (stepLengthManual) stepLengthCm else autoStepLengthCm
+
     /** Пройденное расстояние в километрах: шаги * длина шага (см) / 100 000 (см в км). */
-    fun distanceKm(steps: Int): Double = steps * stepLengthCm / 100_000.0
+    fun distanceKm(steps: Int): Double = steps * effectiveStepLengthCm / 100_000.0
 
     /** Приблизительный расход энергии при ходьбе: ~0.53 ккал на кг веса на км пути. */
     fun calories(steps: Int): Double = distanceKm(steps) * weightKg * 0.53
@@ -187,11 +206,37 @@ class StepRepository(context: Context) {
         prefs.edit()
             .putInt(KEY_GOAL, s.goal)
             .putInt(KEY_STEP_LENGTH, s.stepLengthCm)
+            .putInt(KEY_HEIGHT, s.heightCm)
+            .putInt(KEY_SEX, s.sex)
+            .putBoolean(KEY_STEP_MANUAL, s.stepLengthManual)
             .putInt(KEY_WEIGHT, s.weightKg)
             .putInt(KEY_THEME, s.themeMode)
             .putString(KEY_LANGUAGE, s.language)
             .apply()
         _settings.value = s
+    }
+
+    /**
+     * Восстанавливает данные из резервной копии. Если день уже есть в приложении,
+     * остаётся большее из двух значений (так шаги не пропадут и не удвоятся).
+     * Настройки из файла применяются (кроме темы и языка).
+     */
+    fun restoreBackup(data: BackupData) {
+        scope.launch {
+            val current = history.value
+            val merged = data.days.map { (date, steps) ->
+                DailyStepsEntity(date.toString(), max(steps, current[date] ?: 0))
+            }
+            if (merged.isNotEmpty()) dao.upsertAll(merged)
+        }
+        data.settings?.let { st ->
+            updateSettings {
+                it.copy(
+                    goal = st.goal, heightCm = st.heightCm, sex = st.sex, weightKg = st.weightKg,
+                    stepLengthCm = st.stepLengthCm, stepLengthManual = st.stepLengthManual,
+                )
+            }
+        }
     }
 
     /** Обнуляет шаги за сегодня (например, после сбоя датчика). Прошлые дни не трогаем. */
@@ -256,6 +301,9 @@ class StepRepository(context: Context) {
         return UserSettings(
             goal = prefs.getInt(KEY_GOAL, d.goal),
             stepLengthCm = prefs.getInt(KEY_STEP_LENGTH, d.stepLengthCm),
+            heightCm = prefs.getInt(KEY_HEIGHT, d.heightCm),
+            sex = prefs.getInt(KEY_SEX, d.sex),
+            stepLengthManual = prefs.getBoolean(KEY_STEP_MANUAL, d.stepLengthManual),
             weightKg = prefs.getInt(KEY_WEIGHT, d.weightKg),
             themeMode = prefs.getInt(KEY_THEME, d.themeMode),
             language = prefs.getString(KEY_LANGUAGE, d.language) ?: d.language,
@@ -272,6 +320,9 @@ class StepRepository(context: Context) {
         const val KEY_LAST_BOOT_TIME = "last_boot_time"   // момент включения телефона при прошлом показании
         const val KEY_GOAL = "goal"
         const val KEY_STEP_LENGTH = "step_length_cm"
+        const val KEY_HEIGHT = "height_cm"
+        const val KEY_SEX = "sex"
+        const val KEY_STEP_MANUAL = "step_length_manual"
         const val KEY_WEIGHT = "weight_kg"
         const val KEY_THEME = "theme_mode"
         const val KEY_LANGUAGE = "language"

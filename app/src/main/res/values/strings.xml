@@ -67,12 +67,12 @@
     <string name="set_goal">Daily goal</string>
     <string name="set_step_length">Step length</string>
     <string name="set_weight">Weight</string>
-    <string name="set_hint">Step length and weight are used to estimate distance and calories. These are approximate values.</string>
+    <string name="set_hint">Height and sex are used to calculate your step length; weight is used to estimate calories. All values are approximate.</string>
     <string name="how_title">How it works</string>
     <string name="how_body">Steps are counted by your phone’s built-in sensor. The app runs in the background and shows a notification with your progress, so steps are assigned to the right days. Counting resumes automatically after the phone restarts.</string>
     <string name="data_title">Data</string>
-    <string name="btn_export">Export statistics to CSV</string>
-    <string name="export_hint">Open the file in Excel or Google Sheets. You choose where to save it.</string>
+    <string name="btn_export">Export to CSV (Excel)</string>
+    <string name="export_hint">Saves a table you can open in Excel or Google Sheets. You choose the folder.</string>
     <string name="btn_demo">Fill with demo data</string>
     <string name="demo_hint">Adds random steps for the past 29 days. Handy for previewing the interface on an emulator.</string>
     <string name="btn_delete_all">Delete all history</string>
@@ -139,4 +139,49 @@
     <string name="dlg_reset_today_title">Reset today’s steps?</string>
     <string name="dlg_reset_today_text">Today’s step count will be set to zero. Earlier days are not affected.</string>
     <string name="dlg_reset_today_confirm">Reset</string>
+
+    <!-- Профиль и длина шага -->
+    <string name="profile_title">Goal and profile</string>
+    <string name="set_height">Height</string>
+    <string name="set_sex">Sex</string>
+    <string name="sex_male">Male</string>
+    <string name="sex_female">Female</string>
+    <string name="step_auto_result">Calculated from height and sex: %1$d cm</string>
+    <string name="step_in_use">Used for distance: %1$d cm</string>
+    <string name="step_manual_switch">Set manually</string>
+    <string name="step_manual_hint">To measure your own step, walk 50 steps, measure the distance in centimetres and divide it by 50.</string>
+
+    <!-- Резервная копия -->
+    <string name="btn_save_backup">Save statistics to a folder</string>
+    <string name="save_hint">Creates a backup file in the folder you choose. Use it to move your data to another phone.</string>
+    <string name="btn_load_backup">Load statistics from a file</string>
+    <string name="load_hint">Choose a backup file saved earlier. Days that exist in both places keep the larger value.</string>
+    <string name="toast_restore_ok">Data restored</string>
+    <string name="toast_restore_bad">This is not a Step Counter backup file</string>
+    <string name="toast_read_fail">Could not read the file</string>
+    <string name="dlg_restore_title">Restore from backup?</string>
+    <string name="dlg_restore_text">The file contains %1$d days (%2$s – %3$s). If a day already exists in the app, the larger value is kept. Settings from the file will be applied.</string>
+    <string name="dlg_restore_settings_only">The file contains only settings. They will be applied.</string>
+    <string name="dlg_restore_confirm">Restore</string>
+
+    <!-- Руководство -->
+    <string name="help_card_title">Guide</string>
+    <string name="help_card_text">A short guide to the screens and features of the app.</string>
+    <string name="help_btn">Open guide</string>
+    <string name="help_title">How to use the app</string>
+    <string name="help_close">Close</string>
+    <string name="help_1_title">Today</string>
+    <string name="help_1_body">The ring shows today’s progress toward your daily goal. Below it you see distance, calories and your streak (days in a row with the goal reached), and a chart of the last 7 days.</string>
+    <string name="help_2_title">Statistics</string>
+    <string name="help_2_body">Choose Week, Month or Year. In Month and Year modes use the arrows or tap the name to pick any month or year that has data. Tap a bar to see that day or month in detail. Below the chart you will find totals, the best day, the number of days with the goal reached and a history list.</string>
+    <string name="help_3_title">Notification and widget</string>
+    <string name="help_3_body">While counting, the app shows a notification with steps, calories, distance and a progress line. Android needs it to keep counting in the background. To add the 3×1 widget with the same information, long-press the home screen, open Widgets and choose Step Counter.</string>
+    <string name="help_4_title">Settings and accuracy</string>
+    <string name="help_4_body">Set your goal, height, sex and weight. Step length is calculated from height and sex (men: height × 0.415, women: height × 0.413). You can enter it manually after measuring your own step; the calculated value stays visible there. Distance = steps × step length. Calories are an estimate based on weight and distance.</string>
+    <string name="help_5_title">How steps are counted</string>
+    <string name="help_5_body">Steps come from your phone’s built-in step sensor. Only steps that can be reliably attributed to today are counted. If the app was stopped (battery saver, force stop, restart from a development tool), steps made in that time may be skipped. To avoid this, allow the app to work in the background and do not force-stop it. If the number for today looks wrong, use “Reset today’s steps” in Data.</string>
+    <string name="help_6_title">Backup and moving to a new phone</string>
+    <string name="help_6_body">“Save statistics to a folder” creates a backup file in the folder you choose. Copy that file to the new phone, then use “Load statistics from a file” and pick it. Days that exist in both places keep the larger value, and your settings are restored too. “Export to CSV” saves a table that opens in Excel or Google Sheets.</string>
+    <string name="help_7_title">Appearance</string>
+    <string name="help_7_body">In Appearance you can choose the theme (system, light or dark) and the language (system, English or Русский).</string>
 </resources>

@@ -18,12 +18,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,11 +45,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.stepcounter.R
 import com.example.stepcounter.data.UserSettings
+import com.example.stepcounter.data.daysOfMonth
+import com.example.stepcounter.data.daysOfYear
+import com.example.stepcounter.data.monthsOfYear
+import com.example.stepcounter.data.monthsWithData
 import com.example.stepcounter.data.periodDays
-import com.example.stepcounter.data.periodMonths
 import com.example.stepcounter.data.summarize
+import com.example.stepcounter.data.yearsWithData
 import com.example.stepcounter.ui.components.BarChart
 import com.example.stepcounter.ui.components.BarEntry
 import com.example.stepcounter.util.dayMonth
@@ -60,8 +69,10 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /**
- * Вкладка «Статистика»: неделя / месяц / год, график, итоги и история.
- * В режимах «Неделя» и «Месяц» столбцы — это дни, в режиме «Год» — месяцы (среднее число шагов в день).
+ * Вкладка «Статистика»: неделя / месяц / год.
+ *  - Неделя — последние 7 дней.
+ *  - Месяц — любой календарный месяц, за который есть данные (выбор стрелками или из списка).
+ *  - Год — любой год, за который есть данные; столбцы — месяцы (среднее число шагов в день).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,10 +86,10 @@ fun StatsScreen(
     val goal = settings.goal
 
     var period by rememberSaveable { mutableIntStateOf(0) } // 0 = неделя, 1 = месяц, 2 = год
-    val length = when (period) { 0 -> 7; 1 -> 30; else -> 365 } // сколько дней входит в период
+    val isMonth = period == 1
     val isYear = period == 2
 
-    // Названия месяцев на языке приложения
+    // Названия месяцев и подписи переключателя на языке приложения
     val monthsShort = stringArrayResource(R.array.months_short)
     val monthsFull = stringArrayResource(R.array.months_full)
     val periodLabels = listOf(
@@ -87,24 +98,45 @@ fun StatsScreen(
         stringResource(R.string.period_year),
     )
 
-    val days = remember(history, today, length) { periodDays(history, today, length) } // дни периода
+    // Какие месяцы и годы можно выбрать (те, где есть данные, плюс текущие)
+    val currentYm = YearMonth.from(today)
+    val availableMonths = remember(history, today) { monthsWithData(history, today) }
+    val availableYears = remember(history, today) { yearsWithData(history, today) }
+
+    // Выбранный месяц хранится числом ГГГГММ (например 202610), выбранный год — числом
+    var ymKey by rememberSaveable { mutableIntStateOf(currentYm.year * 100 + currentYm.monthValue) }
+    var selectedYear by rememberSaveable { mutableIntStateOf(today.year) }
+    val selectedYm = YearMonth.of(ymKey / 100, ymKey % 100)
+
+    // Дни выбранного периода
+    val days = remember(history, today, period, ymKey, selectedYear) {
+        when (period) {
+            0 -> periodDays(history, today, 7)
+            1 -> daysOfMonth(history, selectedYm)
+            else -> daysOfYear(history, selectedYear)
+        }
+    }
     // Самая ранняя дата, за которую есть запись
     val first = remember(history) { history.keys.minByOrNull { it.toEpochDay() } }
     // Итоги за период (всего, среднее, лучший день...)
-    val summary = remember(days, first, goal) { summarize(days, first, goal) }
-    // Последние 12 месяцев — нужны для режима «Год»
-    val months = remember(history, today, first) { periodMonths(history, today, first, 12) }
+    val summary = remember(days, first, today, goal) { summarize(days, first, today, goal) }
+    // 12 месяцев выбранного года — для режима «Год»
+    val yearMonths = remember(history, selectedYear, today, first) { monthsOfYear(history, selectedYear, today, first) }
 
-    // Выбранный нажатием день (неделя/месяц) и выбранный месяц (год). По умолчанию — сегодня / текущий месяц
-    var selectedDay by remember(period, today) { mutableStateOf(today) }
-    var selectedMonth by remember(today) { mutableStateOf(YearMonth.from(today)) }
+    // Выбранный нажатием день (неделя/месяц): по умолчанию сегодня, а в прошлом месяце — 1-е число
+    val defaultDay = if (isMonth && selectedYm != currentYm) selectedYm.atDay(1) else today
+    var selectedDay by remember(period, ymKey, today) { mutableStateOf(defaultDay) }
+    // Выбранный месяц внутри года: в текущем году — текущий, в прошлых — последний месяц с шагами
+    val defaultMonthInYear = if (selectedYear == today.year) currentYm
+    else yearMonths.lastOrNull { it.total > 0 }?.month ?: YearMonth.of(selectedYear, 1)
+    var selectedMonthInYear by remember(selectedYear, today) { mutableStateOf(defaultMonthInYear) }
 
     // Данные для карточки с подробностями выбранного дня или месяца
     val detailTitle: String
     val detailSteps: Int
     val detailSub: String?
     if (isYear) {
-        val m = months.firstOrNull { it.month == selectedMonth } ?: months.last()
+        val m = yearMonths.firstOrNull { it.month == selectedMonthInYear } ?: yearMonths.last()
         detailTitle = m.month.fullName(monthsFull)
         detailSteps = m.total
         detailSub = stringResource(R.string.stats_avg_per_day_sub, m.average.formatSteps())
@@ -136,6 +168,33 @@ fun StatsScreen(
                     shape = SegmentedButtonDefaults.itemShape(index = i, count = 3),
                 ) { Text(label) }
             }
+        }
+
+        // Выбор месяца: стрелки «старее / новее» и список всех месяцев с данными
+        if (isMonth) {
+            val idx = availableMonths.indexOf(selectedYm)
+            PeriodPicker(
+                label = selectedYm.fullName(monthsFull),
+                canOlder = idx >= 0 && idx < availableMonths.lastIndex,
+                canNewer = idx > 0,
+                onOlder = { val m = availableMonths[idx + 1]; ymKey = m.year * 100 + m.monthValue },
+                onNewer = { val m = availableMonths[idx - 1]; ymKey = m.year * 100 + m.monthValue },
+                options = availableMonths.map { it.fullName(monthsFull) },
+                onPick = { val m = availableMonths[it]; ymKey = m.year * 100 + m.monthValue },
+            )
+        }
+        // Выбор года
+        if (isYear) {
+            val idx = availableYears.indexOf(selectedYear)
+            PeriodPicker(
+                label = selectedYear.toString(),
+                canOlder = idx >= 0 && idx < availableYears.lastIndex,
+                canNewer = idx > 0,
+                onOlder = { selectedYear = availableYears[idx + 1] },
+                onNewer = { selectedYear = availableYears[idx - 1] },
+                options = availableYears.map { it.toString() },
+                onPick = { selectedYear = availableYears[it] },
+            )
         }
 
         // Карточка с подробностями выбранного дня/месяца: шаги, километры, калории
@@ -182,15 +241,17 @@ fun StatsScreen(
                 // Превращаем данные в столбцы
                 val entries = if (isYear) {
                     // Год: столбец = месяц, высота = среднее число шагов в день
-                    months.map { BarEntry(label = it.month.shortName(monthsShort), value = it.average, selected = it.month == selectedMonth) }
+                    yearMonths.map {
+                        BarEntry(label = it.month.shortName(monthsShort), value = it.average, selected = it.month == selectedMonthInYear)
+                    }
                 } else {
-                    // Неделя/месяц: столбец = день (в месяце подписываем каждый 5-й день)
-                    days.mapIndexed { i, d ->
+                    // Неделя/месяц: столбец = день (в месяце подписываем 1-е число и каждое 5-е)
+                    days.map { d ->
                         BarEntry(
-                            label = if (length == 7) d.date.shortWeekday() else d.date.dayOfMonth.toString(),
+                            label = if (period == 0) d.date.shortWeekday() else d.date.dayOfMonth.toString(),
                             value = d.steps,
                             selected = d.date == selectedDay,
-                            showLabel = length == 7 || (length - 1 - i) % 5 == 0,
+                            showLabel = period == 0 || d.date.dayOfMonth == 1 || d.date.dayOfMonth % 5 == 0,
                         )
                     }
                 }
@@ -199,7 +260,7 @@ fun StatsScreen(
                     goal = goal,
                     chartHeight = 200.dp,
                     onBarClick = { i ->
-                        if (isYear) selectedMonth = months[i].month else selectedDay = days[i].date
+                        if (isYear) selectedMonthInYear = yearMonths[i].month else selectedDay = days[i].date
                     },
                 )
             }
@@ -239,8 +300,7 @@ fun StatsScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                val hasData = first != null
-                if (!hasData) {
+                if (first == null) {
                     Text(
                         stringResource(R.string.stats_empty),
                         style = MaterialTheme.typography.bodyMedium,
@@ -250,7 +310,7 @@ fun StatsScreen(
                 }
                 if (isYear) {
                     // Строка на каждый месяц: полоска показывает среднее в день относительно цели
-                    months.reversed().filter { it.daysCounted > 0 }.forEach { m ->
+                    yearMonths.reversed().filter { it.daysCounted > 0 }.forEach { m ->
                         ProgressRow(
                             label = "${m.month.shortName(monthsShort)} ${m.month.year}",
                             labelWidth = 84.dp,
@@ -259,19 +319,55 @@ fun StatsScreen(
                         )
                     }
                 } else {
-                    // Строка на каждый день с начала записей
-                    days.reversed().filter { first != null && !it.date.isBefore(first) }.forEach { d ->
-                        ProgressRow(
-                            label = "${d.date.shortWeekday()}, ${d.date.dayMonth()}",
-                            labelWidth = 100.dp,
-                            fraction = d.steps / goal.toFloat(),
-                            valueText = d.steps.formatSteps(),
-                        )
-                    }
+                    // Строка на каждый день (с начала записей и не позже сегодня)
+                    days.reversed()
+                        .filter { first != null && !it.date.isBefore(first) && !it.date.isAfter(today) }
+                        .forEach { d ->
+                            ProgressRow(
+                                label = "${d.date.shortWeekday()}, ${d.date.dayMonth()}",
+                                labelWidth = 100.dp,
+                                fraction = d.steps / goal.toFloat(),
+                                valueText = d.steps.formatSteps(),
+                            )
+                        }
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/**
+ * Выбор периода: стрелки «‹ ›» (старее / новее) и посередине кнопка с названием,
+ * по нажатию на которую открывается список всех доступных значений.
+ */
+@Composable
+private fun PeriodPicker(
+    label: String,
+    canOlder: Boolean,
+    canNewer: Boolean,
+    onOlder: () -> Unit,
+    onNewer: () -> Unit,
+    options: List<String>,
+    onPick: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) } // открыт ли выпадающий список
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = onOlder, enabled = canOlder) { Text("‹", fontSize = 28.sp) }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            OutlinedButton(onClick = { expanded = true }) {
+                Text("$label  ▾", fontWeight = FontWeight.SemiBold)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEachIndexed { i, text ->
+                    DropdownMenuItem(
+                        text = { Text(text) },
+                        onClick = { expanded = false; onPick(i) },
+                    )
+                }
+            }
+        }
+        TextButton(onClick = onNewer, enabled = canNewer) { Text("›", fontSize = 28.sp) }
     }
 }
 

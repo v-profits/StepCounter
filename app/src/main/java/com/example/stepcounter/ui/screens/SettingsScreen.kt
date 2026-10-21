@@ -14,14 +14,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,27 +45,32 @@ import kotlin.math.roundToInt
 
 /**
  * Вкладка «Настройки». Сама ничего не хранит — получает текущие [settings]
- * и сообщает наверх об изменениях через onGoal / onStepLength / onWeight и т.д.
+ * и сообщает наверх об изменениях через колбэки (onGoal, onHeight, onSex и т.д.).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: UserSettings,
     onGoal: (Int) -> Unit,
-    onStepLength: (Int) -> Unit,
+    onHeight: (Int) -> Unit,
+    onSex: (Int) -> Unit,
     onWeight: (Int) -> Unit,
+    onStepLengthManual: (Boolean) -> Unit,
+    onStepLength: (Int) -> Unit,
     onTheme: (Int) -> Unit,
     onLanguage: (String) -> Unit,
     onExport: () -> Unit,
+    onSaveBackup: () -> Unit,
+    onLoadBackup: () -> Unit,
     onResetToday: () -> Unit,
     onDemo: () -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    var confirmReset by remember { mutableStateOf(false) } // показывать ли окно подтверждения удаления
-    var confirmResetToday by remember { mutableStateOf(false) } // окно подтверждения «обнулить сегодня»
-    val uriHandler = LocalUriHandler.current                // умеет открывать ссылки в браузере
+    var confirmReset by remember { mutableStateOf(false) }       // окно подтверждения «удалить всю историю»
+    var confirmResetToday by remember { mutableStateOf(false) }  // окно подтверждения «обнулить сегодня»
+    var showGuide by remember { mutableStateOf(false) }          // окно с руководством пользователя
+    val uriHandler = LocalUriHandler.current                     // умеет открывать ссылки в браузере
 
     Column(
         modifier
@@ -79,17 +85,58 @@ fun SettingsScreen(
             modifier = Modifier.padding(top = 12.dp),
         )
 
-        // Карточка с тремя ползунками
+        // Карточка «Цель и профиль»: цель, рост, пол, вес
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.profile_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 SettingSlider(stringResource(R.string.set_goal), stringResource(R.string.unit_steps), settings.goal, 2_000, 30_000, 500, onGoal)
-                SettingSlider(stringResource(R.string.set_step_length), stringResource(R.string.unit_cm), settings.stepLengthCm, 40, 110, 1, onStepLength)
+                SettingSlider(stringResource(R.string.set_height), stringResource(R.string.unit_cm), settings.heightCm, 120, 220, 1, onHeight)
+                // Пол: 0 — мужской, 1 — женский (совпадает с Sex)
+                Text(stringResource(R.string.set_sex), style = MaterialTheme.typography.titleSmall)
+                OptionRow(
+                    options = listOf(stringResource(R.string.sex_male), stringResource(R.string.sex_female)),
+                    selected = settings.sex,
+                    onSelect = onSex,
+                )
                 SettingSlider(stringResource(R.string.set_weight), stringResource(R.string.unit_kg), settings.weightKg, 40, 150, 1, onWeight)
                 Text(
                     stringResource(R.string.set_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = cs.onSurfaceVariant,
                 )
+            }
+        }
+
+        // Карточка «Длина шага»: здесь же виден расчёт по росту и полу и можно ввести значение вручную
+        Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.set_step_length), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                // Результат автоматического расчёта (виден всегда)
+                Text(
+                    stringResource(R.string.step_auto_result, settings.autoStepLengthCm),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                // Какое значение используется сейчас
+                Text(
+                    stringResource(R.string.step_in_use, settings.effectiveStepLengthCm),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = cs.primary,
+                )
+                // Переключатель ручного ввода
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.step_manual_switch), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    Switch(checked = settings.stepLengthManual, onCheckedChange = onStepLengthManual)
+                }
+                // Ползунок ручного ввода (начинается с рассчитанного значения)
+                if (settings.stepLengthManual) {
+                    SettingSlider(stringResource(R.string.set_step_length), stringResource(R.string.unit_cm), settings.stepLengthCm, 30, 130, 1, onStepLength)
+                    Text(
+                        stringResource(R.string.step_manual_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                    )
+                }
             }
         }
 
@@ -148,42 +195,52 @@ fun SettingsScreen(
             }
         }
 
-        // Информационная карточка «Как это работает»
+        // Карточка «Руководство»: открывает окно с описанием возможностей приложения
         Card(
             shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(containerColor = cs.surfaceVariant),
         ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.how_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.help_card_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    stringResource(R.string.how_body),
+                    stringResource(R.string.help_card_text),
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                 )
+                FilledTonalButton(onClick = { showGuide = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.help_btn))
+                }
             }
         }
 
-        // Карточка с действиями над данными: экспорт, демо-данные и очистка
+        // Карточка с действиями над данными: резервная копия, CSV, демо-данные, очистка
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.data_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                // Экспорт статистики в файл CSV (откроется в Excel / Google Таблицах)
-                FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
+
+                // Сохранить статистику в файл (в выбранную папку) — для переноса на другой телефон
+                FilledTonalButton(onClick = onSaveBackup, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.btn_save_backup))
+                }
+                Text(stringResource(R.string.save_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+
+                // Загрузить статистику из ранее сохранённого файла
+                FilledTonalButton(onClick = onLoadBackup, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.btn_load_backup))
+                }
+                Text(stringResource(R.string.load_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+
+                // Экспорт в таблицу CSV (откроется в Excel / Google Таблицах)
+                OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.btn_export))
                 }
-                Text(
-                    stringResource(R.string.export_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
-                FilledTonalButton(onClick = onDemo, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.export_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+
+                OutlinedButton(onClick = onDemo, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.btn_demo))
                 }
-                Text(
-                    stringResource(R.string.demo_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
+                Text(stringResource(R.string.demo_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+
                 // Обнулить шаги за сегодня (если датчик или подсчёт ошиблись)
                 OutlinedButton(onClick = { confirmResetToday = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.btn_reset_today))
@@ -194,6 +251,42 @@ fun SettingsScreen(
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+
+    // Окно с руководством: по разделам объясняет, что где находится и как работает
+    if (showGuide) {
+        val sections = listOf(
+            R.string.help_1_title to R.string.help_1_body,
+            R.string.help_2_title to R.string.help_2_body,
+            R.string.help_3_title to R.string.help_3_body,
+            R.string.help_4_title to R.string.help_4_body,
+            R.string.help_5_title to R.string.help_5_body,
+            R.string.help_6_title to R.string.help_6_body,
+            R.string.help_7_title to R.string.help_7_body,
+        )
+        AlertDialog(
+            onDismissRequest = { showGuide = false },
+            title = { Text(stringResource(R.string.help_title)) },
+            text = {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    sections.forEach { (title, body) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                stringResource(title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = cs.primary,
+                            )
+                            Text(stringResource(body), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showGuide = false }) { Text(stringResource(R.string.help_close)) } },
+        )
     }
 
     // Окно подтверждения «обнулить шаги за сегодня»

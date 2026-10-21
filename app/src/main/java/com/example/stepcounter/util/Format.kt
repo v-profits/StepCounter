@@ -4,6 +4,7 @@ import android.text.format.DateFormat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -40,3 +41,7 @@ fun YearMonth.shortName(names: Array<String>): String = names[monthValue - 1]
 
 /** Месяц -> "Октябрь 2026" / "October 2026". [names] — массив из ресурсов (months_full). */
 fun YearMonth.fullName(names: Array<String>): String = "${names[monthValue - 1]} $year"
+
+/** Дата -> "16 окт. 2026 г." / "Oct 16, 2026" (дата с годом в формате выбранного языка). */
+fun LocalDate.mediumDate(): String =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(this)

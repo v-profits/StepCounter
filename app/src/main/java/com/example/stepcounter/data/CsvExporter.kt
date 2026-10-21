@@ -1,11 +1,9 @@
 package com.example.stepcounter.data
 
 import android.content.Context
-import android.net.Uri
 import com.example.stepcounter.R
 import com.example.stepcounter.util.AppLocale
 import com.example.stepcounter.util.withAppLocale
-import java.io.IOException
 import java.text.DecimalFormatSymbols
 import java.time.LocalDate
 
@@ -49,13 +47,5 @@ object CsvExporter {
                     .append("\r\n")
             }
         return sb.toString()
-    }
-
-    /** Записывает CSV в файл, который пользователь выбрал в системном окне сохранения ([uri]). */
-    fun write(context: Context, uri: Uri, history: Map<LocalDate, Int>, settings: UserSettings) {
-        // "wt" — открыть на запись и стереть прежнее содержимое
-        context.contentResolver.openOutputStream(uri, "wt")?.use {
-            it.write(build(context, history, settings).toByteArray(Charsets.UTF_8))
-        } ?: throw IOException("Could not open the file for writing")
     }
 }

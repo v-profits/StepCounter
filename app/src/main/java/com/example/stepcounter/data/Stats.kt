@@ -1,12 +1,13 @@
 package com.example.stepcounter.data
 
 import java.time.LocalDate
+import java.time.Year
 import java.time.YearMonth
 
 /** Шаги за один день. */
 data class DaySteps(val date: LocalDate, val steps: Int)
 
-/** Итоги за период (неделю или месяц) для экрана статистики. */
+/** Итоги за период (неделю, месяц или год) для экрана статистики. */
 data class PeriodSummary(
     val total: Int,        // всего шагов
     val average: Int,      // среднее в день
@@ -25,13 +26,29 @@ fun periodDays(history: Map<LocalDate, Int>, today: LocalDate, length: Int): Lis
         DaySteps(d, history[d] ?: 0)
     }
 
+/** Все дни календарного месяца [ym] — от 1-го до последнего числа. */
+fun daysOfMonth(history: Map<LocalDate, Int>, ym: YearMonth): List<DaySteps> =
+    (1..ym.lengthOfMonth()).map {
+        val d = ym.atDay(it)
+        DaySteps(d, history[d] ?: 0)
+    }
+
+/** Все дни календарного года [year] — с 1 января по 31 декабря. */
+fun daysOfYear(history: Map<LocalDate, Int>, year: Int): List<DaySteps> {
+    val start = LocalDate.of(year, 1, 1)
+    return (0 until Year.of(year).length()).map {
+        val d = start.plusDays(it.toLong())
+        DaySteps(d, history[d] ?: 0)
+    }
+}
+
 /**
- * Считает итоги за период. Учитываются только дни, начиная с первого дня,
- * за который вообще есть запись (иначе у новичка среднее было бы заниженным).
+ * Считает итоги за период. Учитываются только дни от первого дня, за который есть запись,
+ * и не позже сегодняшнего (будущие дни месяца или года в расчёт не входят).
  */
-fun summarize(days: List<DaySteps>, firstRecorded: LocalDate?, goal: Int): PeriodSummary {
+fun summarize(days: List<DaySteps>, firstRecorded: LocalDate?, today: LocalDate, goal: Int): PeriodSummary {
     val counted = if (firstRecorded == null) emptyList()
-    else days.filter { !it.date.isBefore(firstRecorded) } // дни не раньше первой записи
+    else days.filter { !it.date.isBefore(firstRecorded) && !it.date.isAfter(today) }
     val total = counted.sumOf { it.steps }
     return PeriodSummary(
         total = total,
@@ -69,28 +86,32 @@ data class MonthSteps(
 }
 
 /**
- * Последние [count] месяцев, заканчивая текущим (по возрастанию).
- * В расчёт идут только дни с первой записи до сегодняшнего дня —
+ * Итоги месяца [ym]. В расчёт идут только дни с первой записи до сегодняшнего дня —
  * поэтому у нового пользователя средние значения не занижаются пустыми днями.
  */
-fun periodMonths(
-    history: Map<LocalDate, Int>,
-    today: LocalDate,
-    firstRecorded: LocalDate?,
-    count: Int = 12,
-): List<MonthSteps> =
-    (count - 1 downTo 0).map { back ->
-        val ym = YearMonth.from(today).minusMonths(back.toLong())
-        val lastDay = ym.atEndOfMonth().let { if (it.isAfter(today)) today else it } // не считаем будущие дни
-        var total = 0
-        var days = 0
-        var d = ym.atDay(1)
-        while (!d.isAfter(lastDay)) {
-            if (firstRecorded != null && !d.isBefore(firstRecorded)) {
-                total += history[d] ?: 0
-                days++
-            }
-            d = d.plusDays(1)
+fun monthSteps(history: Map<LocalDate, Int>, ym: YearMonth, today: LocalDate, firstRecorded: LocalDate?): MonthSteps {
+    val lastDay = ym.atEndOfMonth().let { if (it.isAfter(today)) today else it } // не считаем будущие дни
+    var total = 0
+    var days = 0
+    var d = ym.atDay(1)
+    while (!d.isAfter(lastDay)) {
+        if (firstRecorded != null && !d.isBefore(firstRecorded)) {
+            total += history[d] ?: 0
+            days++
         }
-        MonthSteps(ym, total, days)
+        d = d.plusDays(1)
     }
+    return MonthSteps(ym, total, days)
+}
+
+/** Все 12 месяцев года [year] (январь … декабрь) — для годовой статистики. */
+fun monthsOfYear(history: Map<LocalDate, Int>, year: Int, today: LocalDate, firstRecorded: LocalDate?): List<MonthSteps> =
+    (1..12).map { monthSteps(history, YearMonth.of(year, it), today, firstRecorded) }
+
+/** Месяцы, за которые есть данные (плюс текущий), от новых к старым — для выбора месяца. */
+fun monthsWithData(history: Map<LocalDate, Int>, today: LocalDate): List<YearMonth> =
+    (history.keys.map { YearMonth.from(it) } + YearMonth.from(today)).distinct().sortedDescending()
+
+/** Годы, за которые есть данные (плюс текущий), от новых к старым — для выбора года. */
+fun yearsWithData(history: Map<LocalDate, Int>, today: LocalDate): List<Int> =
+    (history.keys.map { it.year } + today.year).distinct().sortedDescending()

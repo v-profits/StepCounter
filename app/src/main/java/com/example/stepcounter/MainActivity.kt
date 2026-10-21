@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -55,6 +56,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.stepcounter.data.BackupData
+import com.example.stepcounter.data.BackupManager
 import com.example.stepcounter.data.ThemeMode
 import com.example.stepcounter.service.StepService
 import com.example.stepcounter.ui.MainViewModel
@@ -63,6 +66,7 @@ import com.example.stepcounter.ui.screens.StatsScreen
 import com.example.stepcounter.ui.screens.TodayScreen
 import com.example.stepcounter.ui.theme.StepCounterTheme
 import com.example.stepcounter.util.hasActivityRecognition
+import com.example.stepcounter.util.mediumDate
 import com.example.stepcounter.util.requiredPermissions
 import com.example.stepcounter.util.withAppLocale
 
@@ -131,15 +135,31 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
         if (permissionGranted && vm.sensorAvailable) StepService.start(context)
     }
 
-    // Системное окно «Сохранить как…» для CSV; в лямбде — что делать после выбора файла
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        if (uri != null) { // null — пользователь отменил
-            vm.exportCsv(uri) { ok ->
-                Toast.makeText(
-                    context,
-                    context.getString(if (ok) R.string.toast_export_ok else R.string.toast_export_fail),
-                    Toast.LENGTH_LONG,
-                ).show()
+    // Что именно сохраняем после выбора папки: 0 — ничего, 1 — таблицу CSV, 2 — резервную копию
+    var pendingSave by rememberSaveable { mutableIntStateOf(0) }
+    // Данные из выбранного файла резервной копии, ожидающие подтверждения восстановления
+    var pendingRestore by remember { mutableStateOf<BackupData?>(null) }
+
+    // Сообщение внизу экрана (Toast) по строке из ресурсов
+    fun toast(resId: Int, long: Boolean = false) =
+        Toast.makeText(context, context.getString(resId), if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+
+    // Системное окно выбора ПАПКИ (файлы в нём не показываются); после выбора сохраняем файл в эту папку
+    val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { folder ->
+        val kind = pendingSave
+        pendingSave = 0
+        if (folder != null && kind != 0) { // null — пользователь отменил
+            val done = { ok: Boolean -> toast(if (ok) R.string.toast_export_ok else R.string.toast_export_fail, long = true) }
+            if (kind == 1) vm.saveCsv(folder, done) else vm.saveBackup(folder, done)
+        }
+    }
+
+    // Окно выбора файла резервной копии: показывает только папки и файлы подходящего типа
+    val backupFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            vm.readBackup(uri) { result ->
+                result.onSuccess { pendingRestore = it } // файл подошёл — спрашиваем подтверждение
+                    .onFailure { toast(if (it is IllegalArgumentException) R.string.toast_restore_bad else R.string.toast_read_fail, long = true) }
             }
         }
     }
@@ -210,21 +230,29 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                         else -> SettingsScreen(
                             settings = settings,
                             onGoal = vm::setGoal,
-                            onStepLength = vm::setStepLength,
+                            onHeight = vm::setHeight,
+                            onSex = vm::setSex,
                             onWeight = vm::setWeight,
-                            onResetToday = vm::resetToday,
+                            onStepLengthManual = vm::setStepLengthManual,
+                            onStepLength = vm::setStepLength,
                             onTheme = vm::setTheme,
                             onLanguage = { tag ->
                                 vm.setLanguage(tag)
                                 (context as? Activity)?.recreate() // перезапускаем экран, чтобы применить язык
                             },
+                            // Сохранение CSV: сначала выбираем папку
                             onExport = {
-                                if (history.isEmpty()) {
-                                    Toast.makeText(context, context.getString(R.string.toast_no_data), Toast.LENGTH_SHORT).show()
-                                } else {
-                                    exportLauncher.launch("steps_$today.csv") // предлагаемое имя файла
-                                }
+                                if (history.isEmpty()) toast(R.string.toast_no_data)
+                                else { pendingSave = 1; folderLauncher.launch(null) }
                             },
+                            // Резервная копия: сначала выбираем папку
+                            onSaveBackup = {
+                                if (history.isEmpty()) toast(R.string.toast_no_data)
+                                else { pendingSave = 2; folderLauncher.launch(null) }
+                            },
+                            // Загрузка: выбираем файл (только папки и файлы подходящего типа)
+                            onLoadBackup = { backupFileLauncher.launch(BackupManager.PICKER_MIME_TYPES) },
+                            onResetToday = vm::resetToday,
                             onDemo = vm::fillDemoData,
                             onReset = vm::clearHistory,
                             modifier = Modifier.fillMaxSize(),
@@ -234,6 +262,37 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
             }
         }
     }
+
+    // Окно подтверждения восстановления из резервной копии
+    pendingRestore?.let { data ->
+        RestoreDialog(
+            data = data,
+            onConfirm = {
+                vm.restoreBackup(data)
+                pendingRestore = null
+                toast(R.string.toast_restore_ok)
+            },
+            onDismiss = { pendingRestore = null },
+        )
+    }
+}
+
+/** Окно подтверждения: что будет восстановлено из выбранного файла резервной копии. */
+@Composable
+private fun RestoreDialog(data: BackupData, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val dates = data.days.keys.sortedBy { it.toEpochDay() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dlg_restore_title)) },
+        text = {
+            Text(
+                if (dates.isEmpty()) stringResource(R.string.dlg_restore_settings_only)
+                else stringResource(R.string.dlg_restore_text, dates.size, dates.first().mediumDate(), dates.last().mediumDate())
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.dlg_restore_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.dlg_cancel)) } },
+    )
 }
 
 /** Цветная карточка-предупреждение с необязательной кнопкой. */
