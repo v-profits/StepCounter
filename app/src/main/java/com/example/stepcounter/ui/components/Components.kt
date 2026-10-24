@@ -29,7 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,10 +44,17 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.example.stepcounter.ui.theme.AppColors
 import kotlin.math.max
@@ -216,8 +225,37 @@ fun BarChart(
 }
 
 /**
+ * Текст в одну строку, который сам уменьшает шрифт, если не помещается по ширине
+ * (слово никогда не переносится по буквам). [minSize] — предел уменьшения.
+ */
+@Composable
+fun FitText(
+    text: AnnotatedString,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    minSize: TextUnit = 9.sp,
+) {
+    // Текущий размер шрифта; сбрасывается, когда меняется текст или исходный размер
+    var fontSize by remember(text, style.fontSize) { mutableStateOf(style.fontSize) }
+    Text(
+        text = text,
+        modifier = modifier,
+        color = color,
+        style = style.copy(fontSize = fontSize),
+        maxLines = 1,
+        softWrap = false, // не переносим по буквам
+        onTextLayout = { result ->
+            // Не поместилось по ширине — уменьшаем шрифт и пробуем снова
+            if (result.didOverflowWidth && fontSize > minSize) fontSize *= 0.92f
+        },
+    )
+}
+
+/**
  * Небольшая цветная карточка с иконкой, значением и подписью
- * (например: иконка, «5,4», «км», «Дистанция»).
+ * (например: иконка, «5,4 км», «Дистанция»).
+ * Значение с единицей и подпись автоматически уменьшаются, если карточка узкая.
  */
 @Composable
 fun StatCard(
@@ -229,22 +267,33 @@ fun StatCard(
     content: Color,
     modifier: Modifier = Modifier,
 ) {
+    // Значение крупно, единица измерения справа мельче (размер задан относительным, 0.55 от основного)
+    val valueText = buildAnnotatedString {
+        append(value)
+        if (unit.isNotEmpty()) {
+            withStyle(SpanStyle(fontSize = 0.55.em, fontWeight = FontWeight.Medium)) {
+                append(" ")
+                append(unit)
+            }
+        }
+    }
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp)) {
             Icon(painter, contentDescription = null, modifier = Modifier.size(24.dp))
             Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
-                if (unit.isNotEmpty()) {
-                    Spacer(Modifier.width(3.dp))
-                    Text(unit, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 3.dp))
-                }
-            }
-            Text(label, style = MaterialTheme.typography.labelMedium, color = content.copy(alpha = 0.75f))
+            FitText(
+                text = valueText,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            )
+            FitText(
+                text = AnnotatedString(label),
+                style = MaterialTheme.typography.labelMedium,
+                color = content.copy(alpha = 0.75f),
+            )
         }
     }
 }
