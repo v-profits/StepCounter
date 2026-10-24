@@ -20,14 +20,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,14 +32,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.stepcounter.R
 import com.example.stepcounter.data.UserSettings
 import com.example.stepcounter.data.daysOfMonth
@@ -56,7 +48,11 @@ import com.example.stepcounter.data.periodDays
 import com.example.stepcounter.data.summarize
 import com.example.stepcounter.data.yearsWithData
 import com.example.stepcounter.ui.components.BarChart
+import com.example.stepcounter.ui.components.ArrowTile
 import com.example.stepcounter.ui.components.BarEntry
+import com.example.stepcounter.ui.components.OptionTiles
+import com.example.stepcounter.ui.components.TileButton
+import com.example.stepcounter.ui.theme.AppColors
 import com.example.stepcounter.util.dayMonth
 import com.example.stepcounter.util.formatKcal
 import com.example.stepcounter.util.formatKm
@@ -74,7 +70,6 @@ import java.time.YearMonth
  *  - Месяц — любой календарный месяц, за который есть данные (выбор стрелками или из списка).
  *  - Год — любой год, за который есть данные; столбцы — месяцы (среднее число шагов в день).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
     history: Map<LocalDate, Int>,
@@ -159,16 +154,8 @@ fun StatsScreen(
             modifier = Modifier.padding(top = 12.dp),
         )
 
-        // Переключатель «Неделя / Месяц / Год»
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            periodLabels.forEachIndexed { i, label ->
-                SegmentedButton(
-                    selected = period == i,
-                    onClick = { period = i },
-                    shape = SegmentedButtonDefaults.itemShape(index = i, count = 3),
-                ) { Text(label) }
-            }
-        }
+        // Переключатель «Неделя / Месяц / Год» — плитки
+        OptionTiles(options = periodLabels, selected = period, onSelect = { period = it })
 
         // Выбор месяца: стрелки «старее / новее» и список всех месяцев с данными
         if (isMonth) {
@@ -338,7 +325,7 @@ fun StatsScreen(
 }
 
 /**
- * Выбор периода: стрелки «‹ ›» (старее / новее) и посередине кнопка с названием,
+ * Выбор периода: плитки-стрелки «‹ ›» (старее / новее) и посередине плитка с названием,
  * по нажатию на которую открывается список всех доступных значений.
  */
 @Composable
@@ -352,12 +339,14 @@ private fun PeriodPicker(
     onPick: (Int) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) } // открыт ли выпадающий список
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = onOlder, enabled = canOlder) { Text("‹", fontSize = 28.sp) }
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            OutlinedButton(onClick = { expanded = true }) {
-                Text("$label  ▾", fontWeight = FontWeight.SemiBold)
-            }
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ArrowTile("‹", enabled = canOlder, onClick = onOlder)
+        Box(Modifier.weight(1f)) {
+            TileButton("$label  ▾", onClick = { expanded = true }, modifier = Modifier.fillMaxWidth())
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 options.forEachIndexed { i, text ->
                     DropdownMenuItem(
@@ -367,7 +356,7 @@ private fun PeriodPicker(
                 }
             }
         }
-        TextButton(onClick = onNewer, enabled = canNewer) { Text("›", fontSize = 28.sp) }
+        ArrowTile("›", enabled = canNewer, onClick = onNewer)
     }
 }
 
@@ -375,8 +364,7 @@ private fun PeriodPicker(
 @Composable
 private fun ProgressRow(label: String, labelWidth: Dp, fraction: Float, valueText: String) {
     val cs = MaterialTheme.colorScheme
-    // Градиент заполненной части полоски
-    val reached = remember(cs.primary, cs.tertiary) { Brush.horizontalGradient(listOf(cs.tertiary, cs.primary)) }
+    val reached = AppColors.progress // сплошной цвет заполненной части полоски
     Row(
         Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

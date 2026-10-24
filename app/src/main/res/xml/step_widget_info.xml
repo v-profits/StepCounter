@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Параметры виджета для системы: размер 3 ячейки в ширину и 1 в высоту -->
+<!-- Параметры виджета для системы: размер 2 ячейки в ширину и 2 в высоту -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
     android:initialLayout="@layout/widget_steps"
-    android:minWidth="180dp"
-    android:minHeight="40dp"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
     android:minResizeWidth="110dp"
-    android:minResizeHeight="40dp"
+    android:minResizeHeight="110dp"
     android:resizeMode="horizontal|vertical"
-    android:targetCellWidth="3"
-    android:targetCellHeight="1"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

@@ -41,6 +41,7 @@ import com.example.stepcounter.ui.components.BarChart
 import com.example.stepcounter.ui.components.BarEntry
 import com.example.stepcounter.ui.components.ProgressRing
 import com.example.stepcounter.ui.components.StatCard
+import com.example.stepcounter.ui.theme.AppColors
 import com.example.stepcounter.util.formatKcal
 import com.example.stepcounter.util.formatKm
 import com.example.stepcounter.util.formatSteps
@@ -93,7 +94,7 @@ fun TodayScreen(
                         Icon(
                             painterResource(R.drawable.ic_steps),
                             contentDescription = null,
-                            tint = cs.primary,
+                            tint = AppColors.progress,
                             modifier = Modifier.size(32.dp),
                         )
                         Text(
@@ -111,13 +112,13 @@ fun TodayScreen(
                 }
                 Spacer(Modifier.height(20.dp))
                 // Плашка с процентом выполнения цели
-                Surface(shape = CircleShape, color = cs.primaryContainer) {
+                Surface(shape = CircleShape, color = AppColors.progress.copy(alpha = 0.15f)) {
                     Text(
                         stringResource(R.string.today_percent, (progress * 100).toInt()),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = cs.onPrimaryContainer,
+                        color = AppColors.progress,
                     )
                 }
                 Spacer(Modifier.height(10.dp))

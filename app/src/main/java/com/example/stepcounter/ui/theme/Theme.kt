@@ -5,6 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 // Светлая цветовая схема. Основной цвет — изумрудный, акцент — оранжевый, дополнительный — голубой.
@@ -60,11 +63,27 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHigh = Color(0xFF1C2A24),
 )
 
+// Цвет прогресса — один сплошной голубой (без градиентов). В тёмной теме чуть светлее.
+private val ProgressBlueLight = Color(0xFF2E9BE8)
+private val ProgressBlueDark = Color(0xFF63B8FF)
+private val LocalProgressColor = staticCompositionLocalOf { ProgressBlueLight }
+
+/** Дополнительные цвета приложения, которых нет в стандартной схеме Material. */
+object AppColors {
+    /** Цвет прогресса: кольцо, столбцы графика, полоски в списках. */
+    val progress: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalProgressColor.current
+}
+
 /** Оборачивает приложение в тему: сама выбирает светлую или тёмную по настройке системы. */
 @Composable
 fun StepCounterTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        content = content,
-    )
+    CompositionLocalProvider(LocalProgressColor provides if (darkTheme) ProgressBlueDark else ProgressBlueLight) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            content = content,
+        )
+    }
 }

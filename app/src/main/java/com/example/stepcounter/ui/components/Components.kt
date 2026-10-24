@@ -41,13 +41,13 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.stepcounter.ui.theme.AppColors
 import kotlin.math.max
 
 /**
@@ -68,8 +68,7 @@ fun ProgressRing(
         label = "ring",
     )
     val track = MaterialTheme.colorScheme.surfaceVariant // цвет серой дорожки
-    val c1 = MaterialTheme.colorScheme.primary
-    val c2 = MaterialTheme.colorScheme.tertiary
+    val progressColor = AppColors.progress // сплошной голубой цвет прогресса
 
     Box(modifier, contentAlignment = Alignment.Center) {
         // Canvas — холст для ручного рисования
@@ -90,18 +89,16 @@ fun ProgressRing(
             )
             // 2) Поверх рисуем цветную дугу прогресса (если он не нулевой)
             if (animated > 0.001f) {
-                // Поворот на -90°, чтобы дуга начиналась сверху (в 12 часов), а не справа
-                rotate(-90f) {
-                    drawArc(
-                        brush = Brush.sweepGradient(listOf(c2, c1, c2)),
-                        startAngle = 0f,
-                        sweepAngle = 360f * animated, // длина дуги пропорциональна прогрессу
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        style = Stroke(stroke, cap = StrokeCap.Round),
-                    )
-                }
+                // Рисуем дугу сплошным цветом; начинается сверху (-90° — это 12 часов)
+                drawArc(
+                    color = progressColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * animated, // длина дуги пропорциональна прогрессу
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(stroke, cap = StrokeCap.Round),
+                )
             }
         }
         content() // текст и иконка в центре кольца
@@ -136,10 +133,8 @@ fun BarChart(
     val gap = if (dense) 2.dp else 8.dp            // промежуток между столбцами
     val radius = if (dense) 3.dp else 8.dp         // скругление верхушек
     // Градиент для столбцов, достигших цели
-    val reachedBrush = remember(cs.primary, cs.tertiary) {
-        Brush.verticalGradient(listOf(cs.tertiary, cs.primary))
-    }
-    val dim = cs.primary.copy(alpha = 0.28f)  // бледный цвет столбцов без достигнутой цели
+    val progressColor = AppColors.progress
+    val dim = progressColor.copy(alpha = 0.28f)  // бледный цвет столбцов без достигнутой цели
     val lineColor = cs.secondary
 
     Column(modifier) {
@@ -160,8 +155,8 @@ fun BarChart(
                     )
                     // Выбор цвета: цель достигнута -> градиент, выделен -> средний, иначе -> бледный
                     val brush: Brush = when {
-                        e.value >= goal -> reachedBrush
-                        e.selected -> SolidColor(cs.primary.copy(alpha = 0.6f))
+                        e.value >= goal -> SolidColor(progressColor)
+                        e.selected -> SolidColor(progressColor.copy(alpha = 0.6f))
                         else -> SolidColor(dim)
                     }
                     // Если задан обработчик — делаем столбец кликабельным (без ряби)
@@ -210,7 +205,7 @@ fun BarChart(
                             softWrap = false,
                             textAlign = TextAlign.Center,
                             fontWeight = if (e.selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (e.selected) cs.primary else cs.onSurfaceVariant,
+                            color = if (e.selected) progressColor else cs.onSurfaceVariant,
                             modifier = Modifier.align(Alignment.Center).wrapContentWidth(unbounded = true),
                         )
                     }

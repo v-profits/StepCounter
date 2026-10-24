@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Скруглённый фон виджета; цвет берётся из colors.xml (светлый/тёмный вариант) -->
+<!-- Фон виджета: карточка со скруглёнными углами (как верхняя карточка на вкладке «Сегодня»).
+     Цвет берётся из colors.xml (светлый/тёмный вариант) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/widget_bg" />

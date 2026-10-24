@@ -2,7 +2,7 @@
     <!-- Английский язык — основной (используется, если языка телефона нет в приложении) -->
     <string name="app_name">Step Counter</string>
     <string name="channel_name">Step counting</string>
-    <string name="widget_description">Steps, calories and distance for today</string>
+    <string name="widget_description">Progress ring with today’s steps and your goal</string>
 
     <!-- Единицы и значения -->
     <string name="unit_kcal">kcal</string>
@@ -175,7 +175,7 @@
     <string name="help_2_title">Statistics</string>
     <string name="help_2_body">Choose Week, Month or Year. In Month and Year modes use the arrows or tap the name to pick any month or year that has data. Tap a bar to see that day or month in detail. Below the chart you will find totals, the best day, the number of days with the goal reached and a history list.</string>
     <string name="help_3_title">Notification and widget</string>
-    <string name="help_3_body">While counting, the app shows a notification with steps, calories, distance and a progress line. Android needs it to keep counting in the background. To add the 3×1 widget with the same information, long-press the home screen, open Widgets and choose Step Counter.</string>
+    <string name="help_3_body">While counting, the app shows a notification with steps, calories, distance and a progress line. Android needs it to keep counting in the background. To add the 2×2 widget, long-press the home screen, open Widgets and choose Step Counter. It looks like the ring on the Today tab: the steps icon, today’s steps and your goal.</string>
     <string name="help_4_title">Settings and accuracy</string>
     <string name="help_4_body">Set your goal, height, sex and weight. Step length is calculated from height and sex (men: height × 0.415, women: height × 0.413). You can enter it manually after measuring your own step; the calculated value stays visible there. Distance = steps × step length. Calories are an estimate based on weight and distance.</string>
     <string name="help_5_title">How steps are counted</string>
@@ -184,4 +184,10 @@
     <string name="help_6_body">“Save statistics to a folder” creates a backup file in the folder you choose. Copy that file to the new phone, then use “Load statistics from a file” and pick it. Days that exist in both places keep the larger value, and your settings are restored too. “Export to CSV” saves a table that opens in Excel or Google Sheets.</string>
     <string name="help_7_title">Appearance</string>
     <string name="help_7_body">In Appearance you can choose the theme (system, light or dark) and the language (system, English or Русский).</string>
+
+    <!-- Заглушка в макете виджета (до первого обновления) -->
+    <string name="placeholder_goal">of 10,000 steps</string>
+
+    <!-- Вариант «как в системе» для языка -->
+    <string name="opt_system_lang">System</string>
 </resources>

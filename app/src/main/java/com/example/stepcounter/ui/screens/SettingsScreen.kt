@@ -10,18 +10,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,12 +43,17 @@ import androidx.compose.ui.unit.dp
 import com.example.stepcounter.AppConfig
 import com.example.stepcounter.R
 import com.example.stepcounter.data.UserSettings
+import com.example.stepcounter.ui.components.ActionTile
+import com.example.stepcounter.ui.components.OptionTiles
+import com.example.stepcounter.ui.components.StepperTile
+import com.example.stepcounter.ui.theme.AppColors
 import com.example.stepcounter.util.formatSteps
 import kotlin.math.roundToInt
 
 /**
  * Вкладка «Настройки». Сама ничего не хранит — получает текущие [settings]
  * и сообщает наверх об изменениях через колбэки (onGoal, onHeight, onSex и т.д.).
+ * Кнопки сделаны плитками со скруглёнными углами (см. ui/components/Tiles.kt).
  */
 @Composable
 fun SettingsScreen(
@@ -87,18 +95,19 @@ fun SettingsScreen(
 
         // Карточка «Цель и профиль»: цель, рост, пол, вес
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.profile_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                SettingSlider(stringResource(R.string.set_goal), stringResource(R.string.unit_steps), settings.goal, 2_000, 30_000, 500, onGoal)
-                SettingSlider(stringResource(R.string.set_height), stringResource(R.string.unit_cm), settings.heightCm, 120, 220, 1, onHeight)
+                // Цель: ползунок двигается по 500, кнопки «−/+» — по 100
+                SettingSlider(stringResource(R.string.set_goal), stringResource(R.string.unit_steps), settings.goal, 2_000, 30_000, 500, 100, onGoal)
+                SettingSlider(stringResource(R.string.set_height), stringResource(R.string.unit_cm), settings.heightCm, 120, 220, 1, 1, onHeight)
                 // Пол: 0 — мужской, 1 — женский (совпадает с Sex)
                 Text(stringResource(R.string.set_sex), style = MaterialTheme.typography.titleSmall)
-                OptionRow(
+                OptionTiles(
                     options = listOf(stringResource(R.string.sex_male), stringResource(R.string.sex_female)),
                     selected = settings.sex,
                     onSelect = onSex,
                 )
-                SettingSlider(stringResource(R.string.set_weight), stringResource(R.string.unit_kg), settings.weightKg, 40, 150, 1, onWeight)
+                SettingSlider(stringResource(R.string.set_weight), stringResource(R.string.unit_kg), settings.weightKg, 40, 150, 1, 1, onWeight)
                 Text(
                     stringResource(R.string.set_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -121,7 +130,7 @@ fun SettingsScreen(
                     stringResource(R.string.step_in_use, settings.effectiveStepLengthCm),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = cs.primary,
+                    color = AppColors.progress,
                 )
                 // Переключатель ручного ввода
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -130,7 +139,7 @@ fun SettingsScreen(
                 }
                 // Ползунок ручного ввода (начинается с рассчитанного значения)
                 if (settings.stepLengthManual) {
-                    SettingSlider(stringResource(R.string.set_step_length), stringResource(R.string.unit_cm), settings.stepLengthCm, 30, 130, 1, onStepLength)
+                    SettingSlider(stringResource(R.string.set_step_length), stringResource(R.string.unit_cm), settings.stepLengthCm, 30, 130, 1, 1, onStepLength)
                     Text(
                         stringResource(R.string.step_manual_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -145,9 +154,9 @@ fun SettingsScreen(
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.appearance_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
-                // Тема: 0 — как в системе, 1 — светлая, 2 — тёмная (совпадает с ThemeMode)
+                // Тема: 0 — системная, 1 — светлая, 2 — тёмная (совпадает с ThemeMode)
                 Text(stringResource(R.string.theme_title), style = MaterialTheme.typography.titleSmall)
-                OptionRow(
+                OptionTiles(
                     options = listOf(
                         stringResource(R.string.opt_system),
                         stringResource(R.string.theme_light),
@@ -157,12 +166,12 @@ fun SettingsScreen(
                     onSelect = onTheme,
                 )
 
-                // Язык: "" — как в системе, иначе код языка
+                // Язык: "" — системный, иначе код языка
                 Text(stringResource(R.string.language_title), style = MaterialTheme.typography.titleSmall)
                 val languageTags = listOf("", "en", "ru")
-                OptionRow(
+                OptionTiles(
                     options = listOf(
-                        stringResource(R.string.opt_system),
+                        stringResource(R.string.opt_system_lang),
                         stringResource(R.string.lang_en),
                         stringResource(R.string.lang_ru),
                     ),
@@ -174,80 +183,44 @@ fun SettingsScreen(
 
         // Карточка «Поддержать разработчика» — показывается, только если в AppConfig указана ссылка
         if (AppConfig.SUPPORT_URL.isNotBlank()) {
-            Card(
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = cs.primaryContainer,
-                    contentColor = cs.onPrimaryContainer,
-                ),
-            ) {
+            Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.support_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.support_text), style = MaterialTheme.typography.bodyMedium)
-                    Button(
+                    Text(stringResource(R.string.support_text), style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                    ActionTile(
+                        icon = Icons.Rounded.Favorite,
+                        title = stringResource(R.string.support_button),
                         onClick = {
                             // Открываем страницу в браузере; если браузера нет — просто ничего не происходит
                             runCatching { uriHandler.openUri(AppConfig.SUPPORT_URL) }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.support_button)) }
+                    )
                 }
             }
         }
 
-        // Карточка «Руководство»: открывает окно с описанием возможностей приложения
-        Card(
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = cs.surfaceVariant),
-        ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.help_card_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(
-                    stringResource(R.string.help_card_text),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
-                )
-                FilledTonalButton(onClick = { showGuide = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.help_btn))
-                }
-            }
-        }
-
-        // Карточка с действиями над данными: резервная копия, CSV, демо-данные, очистка
+        // Плитка «Руководство»: открывает окно с описанием возможностей приложения
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                ActionTile(
+                    icon = Icons.Rounded.Info,
+                    title = stringResource(R.string.help_btn),
+                    subtitle = stringResource(R.string.help_card_text),
+                    onClick = { showGuide = true },
+                )
+            }
+        }
+
+        // Карточка с действиями над данными: резервная копия, CSV, демо-данные, очистка (плитки)
+        Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.data_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-
-                // Сохранить статистику в файл (в выбранную папку) — для переноса на другой телефон
-                FilledTonalButton(onClick = onSaveBackup, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.btn_save_backup))
-                }
-                Text(stringResource(R.string.save_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-
-                // Загрузить статистику из ранее сохранённого файла
-                FilledTonalButton(onClick = onLoadBackup, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.btn_load_backup))
-                }
-                Text(stringResource(R.string.load_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-
-                // Экспорт в таблицу CSV (откроется в Excel / Google Таблицах)
-                OutlinedButton(onClick = onExport, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.btn_export))
-                }
-                Text(stringResource(R.string.export_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-
-                OutlinedButton(onClick = onDemo, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.btn_demo))
-                }
-                Text(stringResource(R.string.demo_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-
-                // Обнулить шаги за сегодня (если датчик или подсчёт ошиблись)
-                OutlinedButton(onClick = { confirmResetToday = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.btn_reset_today))
-                }
-                OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.btn_delete_all), color = cs.error)
-                }
+                ActionTile(Icons.Rounded.Save, stringResource(R.string.btn_save_backup), onSaveBackup, subtitle = stringResource(R.string.save_hint))
+                ActionTile(Icons.Rounded.FolderOpen, stringResource(R.string.btn_load_backup), onLoadBackup, subtitle = stringResource(R.string.load_hint))
+                ActionTile(Icons.Rounded.TableChart, stringResource(R.string.btn_export), onExport, subtitle = stringResource(R.string.export_hint))
+                ActionTile(Icons.Rounded.AutoAwesome, stringResource(R.string.btn_demo), onDemo, subtitle = stringResource(R.string.demo_hint))
+                ActionTile(Icons.Rounded.Refresh, stringResource(R.string.btn_reset_today), { confirmResetToday = true })
+                ActionTile(Icons.Rounded.Delete, stringResource(R.string.btn_delete_all), { confirmReset = true }, danger = true)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -278,7 +251,7 @@ fun SettingsScreen(
                                 stringResource(title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = cs.primary,
+                                color = AppColors.progress,
                             )
                             Text(stringResource(body), style = MaterialTheme.typography.bodyMedium)
                         }
@@ -320,26 +293,11 @@ fun SettingsScreen(
     }
 }
 
-/** Переключатель из нескольких вариантов в один ряд (например: Как в системе / Светлая / Тёмная). */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OptionRow(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        options.forEachIndexed { i, label ->
-            SegmentedButton(
-                selected = selected == i,
-                onClick = { onSelect(i) },
-                shape = SegmentedButtonDefaults.itemShape(index = i, count = options.size),
-            ) { Text(label, maxLines = 1) }
-        }
-    }
-}
-
 /**
- * Ползунок с заголовком и текущим значением.
- * Пока пользователь двигает ползунок, значение хранится локально ([local]),
- * а в настройки записывается только когда он отпустил палец (onValueChangeFinished).
- * [step] — шаг округления (например, цель меняется по 500).
+ * Ползунок с заголовком, текущим значением и плитками «−» и «+» по краям.
+ *  - Ползунок — для грубой установки: значение «прилипает» к кратным [step].
+ *  - Плитки «−» / «+» — для точной подстройки: один шаг = [fineStep]; если держать палец, значение меняется непрерывно.
+ * Значение записывается в настройки, когда пользователь отпустил ползунок или нажал плитку.
  */
 @Composable
 private fun SettingSlider(
@@ -349,12 +307,20 @@ private fun SettingSlider(
     min: Int,
     max: Int,
     step: Int,
+    fineStep: Int,
     onCommit: (Int) -> Unit,
 ) {
-    // Временное значение во время перетаскивания; сбрасывается, когда меняется сохранённое [value]
+    // Текущее значение (во время перетаскивания и нажатий); сбрасывается, когда меняется сохранённое [value]
     var local by remember(value) { mutableFloatStateOf(value.toFloat()) }
-    // Значение, округлённое до шага и ограниченное диапазоном — именно оно показывается и сохраняется
-    val shown = ((local / step).roundToInt() * step).coerceIn(min, max)
+    val shown = local.roundToInt().coerceIn(min, max)
+
+    // Сдвиг значения на [direction] точных шагов (−1 или +1)
+    fun nudge(direction: Int) {
+        val next = (local.roundToInt() + direction * fineStep).coerceIn(min, max)
+        local = next.toFloat()
+        onCommit(next)
+    }
+
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
@@ -362,14 +328,26 @@ private fun SettingSlider(
                 "${shown.formatSteps()} $unit",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = AppColors.progress,
             )
         }
-        Slider(
-            value = local,
-            onValueChange = { local = it },
-            onValueChangeFinished = { onCommit(shown) },
-            valueRange = min.toFloat()..max.toFloat(),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StepperTile("−", onStep = { nudge(-1) })
+            Slider(
+                value = local,
+                onValueChange = { raw ->
+                    // «Прилипание» к кратным step (например, цель двигается по 500)
+                    local = ((raw / step).roundToInt() * step).coerceIn(min, max).toFloat()
+                },
+                onValueChangeFinished = { onCommit(local.roundToInt().coerceIn(min, max)) },
+                valueRange = min.toFloat()..max.toFloat(),
+                colors = SliderDefaults.colors(
+                    thumbColor = AppColors.progress,
+                    activeTrackColor = AppColors.progress,
+                ),
+                modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+            )
+            StepperTile("+", onStep = { nudge(1) })
+        }
     }
 }
