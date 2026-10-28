@@ -22,7 +22,7 @@
     <string name="tab_settings">Настройки</string>
 
     <!-- Баннеры и сообщения -->
-    <string name="banner_no_sensor">На этом устройстве нет датчика шагов. Реальный подсчёт недоступен — но можно посмотреть интерфейс на демо-данных (Настройки).</string>
+    <string name="banner_no_sensor">На этом устройстве нет датчика шагов, поэтому подсчёт шагов здесь недоступен.</string>
     <string name="banner_permission">Нужен доступ к физической активности, чтобы считать шаги.</string>
     <string name="btn_allow">Разрешить</string>
     <string name="btn_open_settings">Настройки</string>
@@ -73,8 +73,6 @@
     <string name="data_title">Данные</string>
     <string name="btn_export">Экспорт в CSV (Excel)</string>
     <string name="export_hint">Сохраняет таблицу, которую можно открыть в Excel или Google Таблицах. Папку выбираете вы.</string>
-    <string name="btn_demo">Заполнить демо-данными</string>
-    <string name="demo_hint">Добавит случайные шаги за прошлые 29 дней — удобно, чтобы посмотреть интерфейс на эмуляторе.</string>
     <string name="btn_delete_all">Удалить всю историю</string>
     <string name="dlg_delete_title">Удалить историю?</string>
     <string name="dlg_delete_text">Все сохранённые шаги будут удалены. Это действие нельзя отменить.</string>
@@ -187,4 +185,17 @@
 
     <!-- Вариант «как в системе» для языка -->
     <string name="opt_system_lang">Системный</string>
+
+    <!-- Окно оценки -->
+    <string name="rate_title">Нравится Шагомер?</string>
+    <string name="rate_text">Коснитесь звезды, чтобы оценить приложение. Это займёт пару секунд и очень поможет.</string>
+    <string name="rate_star_desc">%1$d зв.</string>
+    <string name="rate_hint_store">Спасибо! Откроем страницу приложения в RuStore, чтобы вы оставили там отзыв.</string>
+    <string name="rate_hint_mail">Спасибо за честность! Откроем письмо разработчику — напишите, что улучшить.</string>
+    <string name="rate_submit">Отправить</string>
+    <string name="rate_later">Позже</string>
+    <string name="rate_thanks">Спасибо за оценку!</string>
+    <string name="rate_store_fail">Не удалось открыть страницу магазина</string>
+    <string name="rate_no_mail">Не найдено почтовое приложение. Напишите на %1$s</string>
+    <string name="mail_body_intro">Оценка: %1$d/5\n\nЧто не понравилось или что можно улучшить? Напишите здесь:\n\n</string>
 </resources>

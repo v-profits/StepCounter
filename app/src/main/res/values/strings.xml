@@ -22,7 +22,7 @@
     <string name="tab_settings">Settings</string>
 
     <!-- Баннеры и сообщения -->
-    <string name="banner_no_sensor">This device has no step sensor, so real counting is unavailable. You can still explore the app with demo data (Settings).</string>
+    <string name="banner_no_sensor">This device has no step sensor, so steps cannot be counted here.</string>
     <string name="banner_permission">Activity recognition permission is needed to count steps.</string>
     <string name="btn_allow">Allow</string>
     <string name="btn_open_settings">Settings</string>
@@ -73,8 +73,6 @@
     <string name="data_title">Data</string>
     <string name="btn_export">Export to CSV (Excel)</string>
     <string name="export_hint">Saves a table you can open in Excel or Google Sheets. You choose the folder.</string>
-    <string name="btn_demo">Fill with demo data</string>
-    <string name="demo_hint">Adds random steps for the past 29 days. Handy for previewing the interface on an emulator.</string>
     <string name="btn_delete_all">Delete all history</string>
     <string name="dlg_delete_title">Delete history?</string>
     <string name="dlg_delete_text">All saved steps will be deleted. This cannot be undone.</string>
@@ -190,4 +188,19 @@
 
     <!-- Вариант «как в системе» для языка -->
     <string name="opt_system_lang">System</string>
+
+    <!-- Окно оценки -->
+    <string name="rate_title">Enjoying Step Counter?</string>
+    <string name="rate_text">Tap a star to rate the app. It takes a few seconds and helps a lot.</string>
+    <string name="rate_star_desc">%1$d stars</string>
+    <string name="rate_hint_store">Thank you! We’ll open the app page in RuStore so you can leave your review there.</string>
+    <string name="rate_hint_mail">Thanks for being honest! We’ll open an email to the developer so you can tell us what to improve.</string>
+    <string name="rate_submit">Send</string>
+    <string name="rate_later">Later</string>
+    <string name="rate_thanks">Thank you for your rating!</string>
+    <string name="rate_store_fail">Could not open the store page</string>
+    <string name="rate_no_mail">No email app found. Please write to %1$s</string>
+    <string name="mail_body_intro">Rating: %1$d/5\n\nWhat went wrong or what could be better? Please write here:\n\n</string>
+    <!-- Тема письма одинакова на всех языках -->
+    <string name="mail_subject" translatable="false">Step Counter: feedback (%1$d/5)</string>
 </resources>
