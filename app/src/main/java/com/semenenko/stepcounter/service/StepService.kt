@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -26,11 +28,13 @@ import com.semenenko.stepcounter.util.ProgressLine
 import com.semenenko.stepcounter.util.formatKcal
 import com.semenenko.stepcounter.util.formatKm
 import com.semenenko.stepcounter.util.formatSteps
+import com.semenenko.stepcounter.util.hasActivityRecognition
 import com.semenenko.stepcounter.util.withAppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -47,7 +51,18 @@ class StepService : Service(), SensorEventListener {
     // «Область» для корутин: нужна, чтобы в фоне следить за изменением данных
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var sensorManager: SensorManager? = null
+    private var stepSensor: Sensor? = null
     private lateinit var repo: StepRepository
+
+    // Системные события, после которых нужно сверить дату и «подтолкнуть» датчик:
+    // смена даты (полночь), смена времени/часового пояса, разблокировка экрана.
+    private val clockReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            repo.refreshToday()   // уведомление и виджет сразу перейдут на новый день
+            registerSensor()      // повторная подписка заставляет датчик отдать свежее показание
+        }
+    }
+    private var clockReceiverRegistered = false
 
     /** Вызывается один раз при создании сервиса. */
     override fun onCreate() {
@@ -55,13 +70,26 @@ class StepService : Service(), SensorEventListener {
         repo = (application as StepCounterApp).repository
         createChannel() // канал уведомлений (обязателен с Android 8)
 
+        // Без разрешения на распознавание активности сервис типа «здоровье» запустить нельзя
+        // (на Android 14+ это SecurityException и «вылет»). Тихо останавливаемся.
+        if (!hasActivityRecognition()) {
+            stopSelf()
+            return
+        }
+
         // ВАЖНО: foreground-сервис обязан сразу показать уведомление
         val initial = buildNotification(repo.stepsFor(), repo.settings.value)
-        if (Build.VERSION.SDK_INT >= 34) {
-            // На Android 14+ нужно указать тип сервиса — здесь «здоровье»
-            startForeground(NOTIFICATION_ID, initial, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
-        } else {
-            startForeground(NOTIFICATION_ID, initial)
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                // На Android 14+ нужно указать тип сервиса — здесь «здоровье»
+                startForeground(NOTIFICATION_ID, initial, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+            } else {
+                startForeground(NOTIFICATION_ID, initial)
+            }
+        } catch (_: Exception) {
+            // Система не разрешила перейти в foreground — не падаем, запустимся при открытии приложения
+            stopSelf()
+            return
         }
 
         // Получаем датчик шагов; на некоторых устройствах его нет
@@ -72,20 +100,51 @@ class StepService : Service(), SensorEventListener {
             return
         }
         sensorManager = sm
+        stepSensor = sensor
         // Подписываемся на показания датчика (this = onSensorChanged ниже)
-        sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        registerSensor()
         repo.onSensorSessionStart() // следующее показание — первое после (пере)запуска подсчёта
 
-        // Следим за данными: как только меняются шаги или настройки — обновляем уведомление
+        // Слушаем смену даты / времени / разблокировку экрана
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_DATE_CHANGED)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        ContextCompat.registerReceiver(this, clockReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        clockReceiverRegistered = true
+
+        // Следим за данными: как только меняются шаги, настройки или дата — обновляем уведомление
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         scope.launch {
-            combine(repo.history, repo.settings) { history, settings ->
-                (history[LocalDate.now()] ?: 0) to settings // пара (шаги сегодня, настройки)
+            combine(repo.history, repo.settings, repo.today) { history, settings, day ->
+                (history[day] ?: 0) to settings // пара (шаги сегодня, настройки)
             }.distinctUntilChanged() // реагируем, только если пара изменилась
                 .collect { (steps, settings) ->
-                    nm.notify(NOTIFICATION_ID, buildNotification(steps, settings))
+                    // Ошибка при обновлении уведомления не должна обрывать наблюдение за данными
+                    runCatching { nm.notify(NOTIFICATION_ID, buildNotification(steps, settings)) }
                 }
         }
+
+        // «Сторожевой таймер»: раз в несколько минут сверяем дату и заново подписываемся на датчик.
+        // На некоторых телефонах подписка на датчик со временем «засыпает» и показания перестают
+        // приходить, хотя сервис жив. Повторная подписка будит её и сразу отдаёт актуальное значение.
+        scope.launch {
+            while (true) {
+                delay(WATCHDOG_INTERVAL_MS)
+                repo.refreshToday()
+                registerSensor()
+            }
+        }
+    }
+
+    /** (Пере)подписывается на датчик шагов. Безопасно вызывать сколько угодно раз. */
+    private fun registerSensor() {
+        val sm = sensorManager ?: return
+        val sensor = stepSensor ?: return
+        sm.unregisterListener(this)
+        sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     /** START_STICKY — если система остановит сервис, она потом перезапустит его. */
@@ -108,6 +167,7 @@ class StepService : Service(), SensorEventListener {
     /** Сервис останавливается: отписываемся от датчика и отменяем корутины. */
     override fun onDestroy() {
         sensorManager?.unregisterListener(this)
+        if (clockReceiverRegistered) runCatching { unregisterReceiver(clockReceiver) }
         scope.cancel()
         super.onDestroy()
     }
@@ -167,6 +227,7 @@ class StepService : Service(), SensorEventListener {
     companion object {
         private const val CHANNEL_ID = "steps"   // id канала уведомлений
         private const val NOTIFICATION_ID = 1    // id самого уведомления
+        private const val WATCHDOG_INTERVAL_MS = 10 * 60_000L // как часто «будим» подписку на датчик
 
         /** Запускает сервис. Вызывается из экрана и из BootReceiver. */
         fun start(context: Context) {

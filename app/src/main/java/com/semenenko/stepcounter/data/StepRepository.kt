@@ -113,19 +113,35 @@ class StepRepository(context: Context) {
     private val _settings = MutableStateFlow(loadSettings())
     val settings: StateFlow<UserSettings> = _settings.asStateFlow()
 
+    // Текущая дата — «живое» значение. Раньше дата бралась через LocalDate.now() только в момент
+    // прихода новых шагов, поэтому в полночь уведомление и виджет показывали вчерашнее число,
+    // пока не придёт следующий шаг. Теперь смена даты сама запускает обновление.
+    private val _today = MutableStateFlow(LocalDate.now())
+    val today: StateFlow<LocalDate> = _today.asStateFlow()
+
+    // Время (мс) последнего показания датчика — для диагностики на экране «Настройки»
+    private val _lastSensorTime = MutableStateFlow(prefs.getLong(KEY_LAST_TIME, 0L))
+    val lastSensorTime: StateFlow<Long> = _lastSensorTime.asStateFlow()
+
     init {
-        // Обновляем виджет на рабочем столе, когда меняются шаги сегодня или настройки.
+        // Обновляем виджет на рабочем столе, когда меняются шаги сегодня, настройки или дата.
         // После обновления делаем паузу — так виджет обновляется не чаще раза в несколько секунд
         // (conflate оставляет только самое свежее значение, пока мы ждём).
         scope.launch {
-            combine(history, settings) { h, s -> (h[LocalDate.now()] ?: 0) to s }
+            combine(history, settings, today) { h, s, d -> (h[d] ?: 0) to s }
                 .distinctUntilChanged()
                 .conflate()
                 .collect { (steps, userSettings) ->
-                    StepWidgetProvider.updateAll(appContext, steps, userSettings)
+                    runCatching { StepWidgetProvider.updateAll(appContext, steps, userSettings) }
                     delay(WIDGET_MIN_INTERVAL_MS)
                 }
         }
+    }
+
+    /** Перечитывает текущую дату (вызывается в полночь, при смене времени и просто периодически). */
+    fun refreshToday() {
+        val d = LocalDate.now()
+        if (_today.value != d) _today.value = d
     }
 
     /** Сколько шагов за указанный день (по умолчанию — сегодня). Нет записи — 0. */
@@ -156,6 +172,7 @@ class StepRepository(context: Context) {
     fun onCounterValue(value: Long) {
         val now = System.currentTimeMillis()
         val today = LocalDate.now()
+        refreshToday()
         val startOfToday = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
         val steps = synchronized(lock) {
@@ -193,9 +210,12 @@ class StepRepository(context: Context) {
             }
         }
 
+        _lastSensorTime.value = now
+
         if (steps > 0) {
             val add = steps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            scope.launch { dao.addSteps(today.toString(), add) }
+            // Ошибка записи в базу (нет места, база занята) не должна ронять приложение
+            scope.launch { runCatching { dao.addSteps(today.toString(), add) } }
         }
     }
 

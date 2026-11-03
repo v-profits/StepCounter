@@ -15,9 +15,6 @@ import com.semenenko.stepcounter.data.FileSaver
 import com.semenenko.stepcounter.util.AppLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -34,9 +31,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val history = repo.history
     val settings = repo.settings
 
-    private val _today = MutableStateFlow(LocalDate.now())
-    /** Текущая дата; обновляется, если приложение открыто в полночь. */
-    val today: StateFlow<LocalDate> = _today.asStateFlow()
+    /** Текущая дата (общая с сервисом); обновляется в полночь. */
+    val today = repo.today
+
+    /** Время последнего показания датчика (мс) — для диагностики в настройках. */
+    val lastSensorTime = repo.lastSensorTime
 
     /** Есть ли в телефоне датчик шагов (на эмуляторах обычно нет). */
     val sensorAvailable: Boolean =
@@ -48,7 +47,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             while (true) {
                 delay(15_000)
-                _today.value = LocalDate.now()
+                repo.refreshToday()
             }
         }
     }

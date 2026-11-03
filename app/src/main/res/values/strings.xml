@@ -203,4 +203,10 @@
     <string name="mail_body_intro">Rating: %1$d/5\n\nWhat went wrong or what could be better? Please write here:\n\n</string>
     <!-- Тема письма одинакова на всех языках -->
     <string name="mail_subject" translatable="false">Step Counter: feedback (%1$d/5)</string>
+
+    <!-- Работа в фоне -->
+    <string name="bg_title">Background work</string>
+    <string name="bg_last_reading">Last step sensor reading: %1$s</string>
+    <string name="bg_hint">If counting sometimes stops, set battery usage for this app to “Unrestricted” (no battery optimization) and allow autostart if your phone has such a setting. Check the time above later: if it is much older than your last walk, the system had stopped the app.</string>
+    <string name="bg_btn">Battery settings</string>
 </resources>

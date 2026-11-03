@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.TableChart
@@ -47,6 +48,10 @@ import com.semenenko.stepcounter.ui.components.OptionTiles
 import com.semenenko.stepcounter.ui.components.StepperTile
 import com.semenenko.stepcounter.ui.theme.AppColors
 import com.semenenko.stepcounter.util.formatSteps
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 
 /**
@@ -57,6 +62,8 @@ import kotlin.math.roundToInt
 @Composable
 fun SettingsScreen(
     settings: UserSettings,
+    lastSensorTime: Long,
+    onBatterySettings: () -> Unit,
     onGoal: (Int) -> Unit,
     onHeight: (Int) -> Unit,
     onSex: (Int) -> Unit,
@@ -194,6 +201,20 @@ fun SettingsScreen(
                         },
                     )
                 }
+            }
+        }
+
+        // Карточка «Работа в фоне»: когда датчик присылал шаги в последний раз + быстрый переход в настройки батареи
+        Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.bg_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val lastText = if (lastSensorTime > 0L) {
+                    Instant.ofEpochMilli(lastSensorTime).atZone(ZoneId.systemDefault())
+                        .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT))
+                } else "—"
+                Text(stringResource(R.string.bg_last_reading, lastText), style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.bg_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                ActionTile(Icons.Rounded.BatterySaver, stringResource(R.string.bg_btn), onBatterySettings)
             }
         }
 

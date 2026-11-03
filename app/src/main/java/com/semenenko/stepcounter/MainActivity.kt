@@ -128,6 +128,7 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
     val history by vm.history.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val today by vm.today.collectAsStateWithLifecycle()
+    val lastSensorTime by vm.lastSensorTime.collectAsStateWithLifecycle()
 
     var tab by rememberSaveable { mutableIntStateOf(0) } // номер выбранной вкладки (сохраняется при повороте)
     var permissionGranted by remember { mutableStateOf(context.hasActivityRecognition()) } // есть ли разрешение
@@ -249,6 +250,19 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                         1 -> StatsScreen(history, settings, today, Modifier.fillMaxSize())
                         else -> SettingsScreen(
                             settings = settings,
+                            lastSensorTime = lastSensorTime,
+                            onBatterySettings = {
+                                // Открываем системный список «Экономия заряда»; если его нет — настройки приложения
+                                val opened = runCatching {
+                                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                                }.isSuccess
+                                if (!opened) runCatching {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                            .setData(Uri.fromParts("package", context.packageName, null))
+                                    )
+                                }
+                            },
                             onGoal = vm::setGoal,
                             onHeight = vm::setHeight,
                             onSex = vm::setSex,
