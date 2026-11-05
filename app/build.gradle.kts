@@ -53,6 +53,10 @@ android {
             // Правила Google Play запрещают задавать вопросы перед окном оценки и отбирать «довольных» пользователей,
             // поэтому здесь своё окно со звёздами выключено: в нужный момент показывается только окно оценки Google
             buildConfigField("boolean", "RATING_FUNNEL", "false")
+            // Системное окно «Разрешить работу без ограничений» (одно нажатие).
+            // Внимание: Google Play может потребовать пояснение к разрешению REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+            // или отклонить сборку. Если так — поставьте "false": откроется список настроек батареи.
+            buildConfigField("boolean", "BATTERY_DIRECT", "true")
             buildConfigField("String", "STORE_APP_URI", "\"market://details?id=\"")
             buildConfigField("String", "STORE_WEB_URL", "\"https://play.google.com/store/apps/details?id=\"")
         }
@@ -63,6 +67,8 @@ android {
             // В RuStore включено своё окно со звёздами: 4–5 звёзд ведут на страницу приложения в RuStore,
             // 1–3 звезды — в письмо разработчику
             buildConfigField("boolean", "RATING_FUNNEL", "true")
+            // В RuStore запрашиваем отключение оптимизации батареи прямо системным окном «Разрешить»
+            buildConfigField("boolean", "BATTERY_DIRECT", "true")
             buildConfigField("String", "STORE_APP_URI", "\"rustore://apps.rustore.ru/app/\"")
             buildConfigField("String", "STORE_WEB_URL", "\"https://www.rustore.ru/catalog/app/\"")
         }

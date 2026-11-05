@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Получить сигнал о включении телефона, чтобы снова запустить подсчёт -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Системное окно «Разрешить работу без ограничений», чтобы Android не останавливал подсчёт в фоне -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".StepCounterApp"
@@ -56,6 +58,11 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- «Сторож»: будильник раз в ~15 минут перезапускает сервис, если систему его остановила -->
+        <receiver
+            android:name=".service.WatchdogReceiver"
+            android:exported="false" />
 
         <!-- Виджет рабочего стола -->
         <receiver

@@ -28,6 +28,12 @@ object AppConfig {
      */
     val RATING_FUNNEL: Boolean get() = BuildConfig.RATING_FUNNEL
 
+    /**
+     * true  — просим отключить оптимизацию батареи системным окном «Разрешить» (вариант rustore, есть разрешение в манифесте);
+     * false — открываем список настроек батареи, где пользователь делает это сам (вариант play).
+     */
+    val BATTERY_DIRECT: Boolean get() = BuildConfig.BATTERY_DIRECT
+
     /** Адрес страницы приложения в магазине: сначала открываем приложение магазина, если его нет — сайт. */
     val STORE_APP_URI: String get() = BuildConfig.STORE_APP_URI
     val STORE_WEB_URL: String get() = BuildConfig.STORE_WEB_URL

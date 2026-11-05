@@ -69,6 +69,9 @@ import com.semenenko.stepcounter.ui.screens.StatsScreen
 import com.semenenko.stepcounter.ui.screens.TodayScreen
 import com.semenenko.stepcounter.ui.theme.StepCounterTheme
 import com.semenenko.stepcounter.util.hasActivityRecognition
+import com.semenenko.stepcounter.util.isIgnoringBatteryOptimizations
+import com.semenenko.stepcounter.util.openBatterySettings
+import com.semenenko.stepcounter.util.requestBackgroundWork
 import com.semenenko.stepcounter.util.mediumDate
 import com.semenenko.stepcounter.util.requiredPermissions
 import com.semenenko.stepcounter.util.withAppLocale
@@ -190,8 +193,20 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
         }
     }
 
-    // Каждый раз, когда приложение возвращается на экран: перепроверяем разрешение и (пере)запускаем сервис
+    // Разрешена ли работа без ограничений по батарее; окно с объяснением показываем один раз после выдачи разрешения на шаги
+    var batteryOk by remember { mutableStateOf(context.isIgnoringBatteryOptimizations()) }
+    var showBatteryDialog by rememberSaveable { mutableStateOf(false) }  // шаг 1: предложение разрешить работу в фоне
+    var showBatteryHint by rememberSaveable { mutableStateOf(false) }    // шаг 2: подсказка, где это сделать позже
+    LaunchedEffect(permissionGranted) {
+        if (permissionGranted && !batteryOk) {
+            val prefs = context.getSharedPreferences("steps", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("battery_asked", false)) showBatteryDialog = true
+        }
+    }
+
+    // Каждый раз, когда приложение возвращается на экран: перепроверяем разрешения и (пере)запускаем сервис
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        batteryOk = context.isIgnoringBatteryOptimizations()
         permissionGranted = context.hasActivityRecognition()
         if (permissionGranted && vm.sensorAvailable) StepService.start(context)
     }
@@ -251,18 +266,9 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                         else -> SettingsScreen(
                             settings = settings,
                             lastSensorTime = lastSensorTime,
-                            onBatterySettings = {
-                                // Открываем системный список «Экономия заряда»; если его нет — настройки приложения
-                                val opened = runCatching {
-                                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                                }.isSuccess
-                                if (!opened) runCatching {
-                                    context.startActivity(
-                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                            .setData(Uri.fromParts("package", context.packageName, null))
-                                    )
-                                }
-                            },
+                            batteryOk = batteryOk,
+                            onBatteryRequest = { context.requestBackgroundWork() },
+                            onBatterySettings = { context.openBatterySettings() },
                             onGoal = vm::setGoal,
                             onHeight = vm::setHeight,
                             onSex = vm::setSex,
@@ -294,6 +300,41 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                 }
             }
         }
+    }
+
+    // При первом открытии предлагаем разрешить работу в фоне (точнее подсчёт, но батарея садится чуть быстрее).
+    // «Позже» — показываем подсказку, где это можно сделать потом.
+    val markBatteryAsked = {
+        context.getSharedPreferences("steps", Context.MODE_PRIVATE).edit().putBoolean("battery_asked", true).apply()
+    }
+    if (showBatteryDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.battery_dlg_title)) },
+            text = { Text(stringResource(R.string.battery_dlg_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBatteryDialog = false
+                    markBatteryAsked()
+                    context.requestBackgroundWork()
+                }) { Text(stringResource(R.string.btn_allow)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showBatteryDialog = false
+                    markBatteryAsked()
+                    showBatteryHint = true
+                }) { Text(stringResource(R.string.battery_dlg_later)) }
+            },
+        )
+    }
+    if (showBatteryHint) {
+        AlertDialog(
+            onDismissRequest = { showBatteryHint = false },
+            title = { Text(stringResource(R.string.battery_hint_title)) },
+            text = { Text(stringResource(R.string.battery_hint_text)) },
+            confirmButton = { TextButton(onClick = { showBatteryHint = false }) { Text(stringResource(R.string.battery_hint_ok)) } },
+        )
     }
 
     // Окно со звёздами: 4–5 → страница приложения в магазине, 1–3 → письмо разработчику

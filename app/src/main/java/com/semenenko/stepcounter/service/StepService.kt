@@ -1,5 +1,6 @@
 package com.semenenko.stepcounter.service
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,6 +17,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -63,6 +65,7 @@ class StepService : Service(), SensorEventListener {
         }
     }
     private var clockReceiverRegistered = false
+    private var failed = false // true — сервису нечего делать (нет разрешения/датчика), перезапускать не надо
 
     /** Вызывается один раз при создании сервиса. */
     override fun onCreate() {
@@ -73,6 +76,7 @@ class StepService : Service(), SensorEventListener {
         // Без разрешения на распознавание активности сервис типа «здоровье» запустить нельзя
         // (на Android 14+ это SecurityException и «вылет»). Тихо останавливаемся.
         if (!hasActivityRecognition()) {
+            failed = true
             stopSelf()
             return
         }
@@ -87,7 +91,7 @@ class StepService : Service(), SensorEventListener {
                 startForeground(NOTIFICATION_ID, initial)
             }
         } catch (_: Exception) {
-            // Система не разрешила перейти в foreground — не падаем, запустимся при открытии приложения
+            // Система не разрешила перейти в foreground — не падаем; сторож попробует ещё раз позже
             stopSelf()
             return
         }
@@ -96,6 +100,7 @@ class StepService : Service(), SensorEventListener {
         val sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
         if (sensor == null) {
+            failed = true
             stopSelf() // нет датчика — сервису делать нечего
             return
         }
@@ -148,7 +153,20 @@ class StepService : Service(), SensorEventListener {
     }
 
     /** START_STICKY — если система остановит сервис, она потом перезапустит его. */
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (failed) {
+            cancelWatchdog(this)
+            return START_NOT_STICKY
+        }
+        scheduleWatchdog(this) // страховка: если систему остановят — будильник запустит сервис снова
+        return START_STICKY
+    }
+
+    /** Пользователь смахнул приложение из списка недавних: на некоторых телефонах это убивает сервис — просим скоро перезапустить. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        scheduleWatchdog(this, delayMs = 3_000L)
+        super.onTaskRemoved(rootIntent)
+    }
 
     /** Привязка не используется — сервис только запускается/останавливается. */
     override fun onBind(intent: Intent?): IBinder? = null
@@ -229,7 +247,35 @@ class StepService : Service(), SensorEventListener {
         private const val NOTIFICATION_ID = 1    // id самого уведомления
         private const val WATCHDOG_INTERVAL_MS = 10 * 60_000L // как часто «будим» подписку на датчик
 
-        /** Запускает сервис. Вызывается из экрана и из BootReceiver. */
+        private const val WATCHDOG_ALARM_MS = 15 * 60_000L // период будильника-сторожа
+        private const val WATCHDOG_REQUEST_CODE = 1
+
+        private fun watchdogIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+            context, WATCHDOG_REQUEST_CODE,
+            Intent(context, WatchdogReceiver::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        /** Ставит будильник-сторож (неточный — разрешение на точные будильники не нужно). */
+        fun scheduleWatchdog(context: Context, delayMs: Long = WATCHDOG_ALARM_MS) {
+            runCatching {
+                val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                am.setAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    SystemClock.elapsedRealtime() + delayMs,
+                    watchdogIntent(context),
+                )
+            }
+        }
+
+        /** Снимает будильник-сторож. */
+        fun cancelWatchdog(context: Context) {
+            runCatching {
+                (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(watchdogIntent(context))
+            }
+        }
+
+        /** Запускает сервис. Вызывается из экрана, из BootReceiver и из сторожа. */
         fun start(context: Context) {
             try {
                 ContextCompat.startForegroundService(context, Intent(context, StepService::class.java))

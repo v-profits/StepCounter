@@ -209,4 +209,16 @@
     <string name="bg_last_reading">Last step sensor reading: %1$s</string>
     <string name="bg_hint">If counting sometimes stops, set battery usage for this app to “Unrestricted” (no battery optimization) and allow autostart if your phone has such a setting. Check the time above later: if it is much older than your last walk, the system had stopped the app.</string>
     <string name="bg_btn">Battery settings</string>
+
+    <string name="bg_ok">Background work is allowed: steps are counted without interruptions.</string>
+    <string name="bg_warn">Battery saver may stop step counting.</string>
+    <string name="banner_battery">Battery saver may stop step counting in the background.</string>
+    <string name="battery_dlg_title">Allow background work?</string>
+    <string name="battery_dlg_text">Allow the app to work in the background without restrictions: steps will be counted more accurately and without interruptions. Note: this may drain the battery a little faster.</string>
+    <string name="battery_dlg_ok">Continue</string>
+    <string name="battery_dlg_later">Later</string>
+    <string name="battery_hint_title">You can do this later</string>
+    <string name="battery_hint_text">Open the Settings tab, find the “Background work” section and tap “Allow background work”. The “Battery settings” button there lets you configure it manually.</string>
+    <string name="battery_hint_ok">Got it</string>
+    <string name="bg_allow_btn">Allow background work</string>
 </resources>

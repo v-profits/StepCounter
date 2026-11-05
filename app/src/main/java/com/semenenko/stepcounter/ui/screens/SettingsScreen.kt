@@ -63,6 +63,8 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     settings: UserSettings,
     lastSensorTime: Long,
+    batteryOk: Boolean,
+    onBatteryRequest: () -> Unit,
     onBatterySettings: () -> Unit,
     onGoal: (Int) -> Unit,
     onHeight: (Int) -> Unit,
@@ -213,7 +215,15 @@ fun SettingsScreen(
                         .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT))
                 } else "—"
                 Text(stringResource(R.string.bg_last_reading, lastText), style = MaterialTheme.typography.bodyMedium)
+                if (batteryOk) {
+                    Text(stringResource(R.string.bg_ok), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = AppColors.progress)
+                } else {
+                    Text(stringResource(R.string.bg_warn), style = MaterialTheme.typography.bodyMedium, color = cs.error)
+                }
                 Text(stringResource(R.string.bg_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                // Кнопка разрешения (одно нажатие «Разрешить» в системном окне) — пока работа в фоне не разрешена
+                if (!batteryOk) ActionTile(Icons.Rounded.BatterySaver, stringResource(R.string.bg_allow_btn), onBatteryRequest)
+                // Ручная настройка: открывает системные настройки батареи
                 ActionTile(Icons.Rounded.BatterySaver, stringResource(R.string.bg_btn), onBatterySettings)
             }
         }
