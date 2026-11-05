@@ -27,6 +27,12 @@ fun Context.requestBackgroundWork() {
     openBatterySettings()
 }
 
+/** Intent для запуска с ожиданием результата: системное окно «Разрешить» (или список настроек батареи, если окно не используется). */
+@SuppressLint("BatteryLife") // разрешение объявлено в AndroidManifest.xml
+fun Context.backgroundWorkIntent(): Intent =
+    if (AppConfig.BATTERY_DIRECT) Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
+    else Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+
 /** Открывает настройки батареи для ручной настройки: общий список, а если его нет — настройки приложения. */
 fun Context.openBatterySettings() {
     val intents = listOf(

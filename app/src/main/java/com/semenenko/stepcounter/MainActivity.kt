@@ -68,6 +68,7 @@ import com.semenenko.stepcounter.ui.screens.SettingsScreen
 import com.semenenko.stepcounter.ui.screens.StatsScreen
 import com.semenenko.stepcounter.ui.screens.TodayScreen
 import com.semenenko.stepcounter.ui.theme.StepCounterTheme
+import com.semenenko.stepcounter.util.backgroundWorkIntent
 import com.semenenko.stepcounter.util.hasActivityRecognition
 import com.semenenko.stepcounter.util.isIgnoringBatteryOptimizations
 import com.semenenko.stepcounter.util.openBatterySettings
@@ -197,6 +198,13 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
     var batteryOk by remember { mutableStateOf(context.isIgnoringBatteryOptimizations()) }
     var showBatteryDialog by rememberSaveable { mutableStateOf(false) }  // шаг 1: предложение разрешить работу в фоне
     var showBatteryHint by rememberSaveable { mutableStateOf(false) }    // шаг 2: подсказка, где это сделать позже
+    var batteryFromDialog by rememberSaveable { mutableStateOf(false) }  // системное окно открыто из первого предложения
+    // Результат системного окна: если работу в фоне не разрешили — показываем ту же подсказку, что после «Позже»
+    val batteryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        batteryOk = context.isIgnoringBatteryOptimizations()
+        if (batteryFromDialog && !batteryOk) showBatteryHint = true
+        batteryFromDialog = false
+    }
     LaunchedEffect(permissionGranted) {
         if (permissionGranted && !batteryOk) {
             val prefs = context.getSharedPreferences("steps", Context.MODE_PRIVATE)
@@ -241,7 +249,7 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                     stringResource(R.string.banner_no_sensor),
                     null,
                 ) {}
-                !permissionGranted -> Banner(
+                !permissionGranted && denied -> Banner( // только после отказа: пока идёт системный запрос, баннер не нужен
                     stringResource(R.string.banner_permission),
                     if (denied) stringResource(R.string.btn_open_settings) else stringResource(R.string.btn_allow),
                 ) {
@@ -316,7 +324,11 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                 TextButton(onClick = {
                     showBatteryDialog = false
                     markBatteryAsked()
-                    context.requestBackgroundWork()
+                    batteryFromDialog = true
+                    runCatching { batteryLauncher.launch(context.backgroundWorkIntent()) }.onFailure {
+                        batteryFromDialog = false
+                        context.requestBackgroundWork()
+                    }
                 }) { Text(stringResource(R.string.btn_allow)) }
             },
             dismissButton = {

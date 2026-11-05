@@ -230,7 +230,7 @@ fun SettingsScreen(
 
         // Плитка «Руководство»: открывает окно с описанием возможностей приложения
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
-            Column(Modifier.padding(12.dp)) {
+            Column(Modifier.padding(20.dp)) { // те же отступы, что в других карточках, чтобы плитка была такой же ширины
                 ActionTile(
                     icon = Icons.Rounded.Info,
                     title = stringResource(R.string.help_btn),
