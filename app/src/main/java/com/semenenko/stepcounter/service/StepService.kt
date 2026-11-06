@@ -158,7 +158,7 @@ class StepService : Service(), SensorEventListener {
             cancelWatchdog(this)
             return START_NOT_STICKY
         }
-        scheduleWatchdog(this) // страховка: если систему остановят — будильник запустит сервис снова
+        scheduleWatchdog(this) // страховка: если система его остановит — будильник запустит сервис снова
         return START_STICKY
     }
 

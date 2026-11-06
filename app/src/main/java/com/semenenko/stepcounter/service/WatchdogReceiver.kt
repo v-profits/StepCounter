@@ -7,7 +7,7 @@ import com.semenenko.stepcounter.util.hasActivityRecognition
 
 /**
  * «Сторож»: срабатывает по будильнику раз в ~15 минут (будильник переживает «убийство» процесса)
- * и заново запускает сервис подсчёта, если систему удалось остановить. Затем ставит следующий будильник.
+ * и заново запускает сервис подсчёта, если система его остановила. Затем ставит следующий будильник.
  */
 class WatchdogReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
