@@ -11,6 +11,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -27,6 +29,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,8 +67,12 @@ fun SettingsScreen(
     settings: UserSettings,
     lastSensorTime: Long,
     batteryOk: Boolean,
+    notifOk: Boolean,
+    oemRestricted: Boolean,
+    oemDone: Boolean,
+    onOemOpen: () -> Unit,
+    onNotifRequest: () -> Unit,
     onBatteryRequest: () -> Unit,
-    onBatterySettings: () -> Unit,
     onGoal: (Int) -> Unit,
     onHeight: (Int) -> Unit,
     onSex: (Int) -> Unit,
@@ -206,25 +213,44 @@ fun SettingsScreen(
             }
         }
 
-        // Карточка «Работа в фоне»: когда датчик присылал шаги в последний раз + быстрый переход в настройки батареи
+        // Карточка «Работа в фоне»: список шагов, каждый со своим статусом и своей кнопкой
         Card(shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = cs.surface)) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(stringResource(R.string.bg_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+
+                BgStatusRow(
+                    ok = notifOk,
+                    title = stringResource(R.string.bg_row_notif_title),
+                    text = stringResource(R.string.bg_row_notif_text),
+                    button = stringResource(R.string.btn_allow),
+                    onClick = onNotifRequest,
+                )
+                if (oemRestricted) {
+                    // Телефон с собственной защитой фона: одна строка и одно окно настроек для обоих выключателей.
+                    // Их состояние проверить нельзя, поэтому «готово» — когда настройки открыты и системная оптимизация снята.
+                    BgStatusRow(
+                        ok = oemDone && batteryOk,
+                        title = stringResource(R.string.bg_row_oem_title),
+                        text = stringResource(R.string.oem_text),
+                        button = stringResource(R.string.btn_open_settings),
+                        onClick = onOemOpen,
+                        alwaysShowButton = true,
+                    )
+                } else {
+                    BgStatusRow(
+                        ok = batteryOk,
+                        title = stringResource(R.string.bg_row_battery_title),
+                        text = stringResource(R.string.bg_row_battery_text),
+                        button = stringResource(R.string.btn_allow),
+                        onClick = onBatteryRequest,
+                    )
+                }
+
                 val lastText = if (lastSensorTime > 0L) {
                     Instant.ofEpochMilli(lastSensorTime).atZone(ZoneId.systemDefault())
                         .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT))
                 } else "—"
-                Text(stringResource(R.string.bg_last_reading, lastText), style = MaterialTheme.typography.bodyMedium)
-                if (batteryOk) {
-                    Text(stringResource(R.string.bg_ok), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = AppColors.progress)
-                } else {
-                    Text(stringResource(R.string.bg_warn), style = MaterialTheme.typography.bodyMedium, color = cs.error)
-                }
-                Text(stringResource(R.string.bg_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                // Кнопка разрешения (одно нажатие «Разрешить» в системном окне) — пока работа в фоне не разрешена
-                if (!batteryOk) ActionTile(Icons.Rounded.BatterySaver, stringResource(R.string.bg_allow_btn), onBatteryRequest)
-                // Ручная настройка: открывает системные настройки батареи
-                ActionTile(Icons.Rounded.BatterySaver, stringResource(R.string.bg_btn), onBatterySettings)
+                Text(stringResource(R.string.bg_last_reading, lastText), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
         }
 
@@ -376,6 +402,32 @@ private fun SettingSlider(
                 modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
             )
             StepperTile("+", onStep = { nudge(1) })
+        }
+    }
+}
+
+/** Одна строка списка «Работа в фоне»: значок статуса, название, пояснение и (если не готово) кнопка. */
+@Composable
+private fun BgStatusRow(
+    ok: Boolean,
+    title: String,
+    text: String,
+    button: String,
+    onClick: () -> Unit,
+    alwaysShowButton: Boolean = false,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Icon(
+            imageVector = if (ok) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
+            contentDescription = null,
+            tint = if (ok) AppColors.progress else cs.error,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(text, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+            if (!ok || alwaysShowButton) TextButton(onClick = onClick) { Text(button) }
         }
     }
 }

@@ -15,8 +15,9 @@ fun Context.hasActivityRecognition(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) ==
         PackageManager.PERMISSION_GRANTED
 
-/** Список разрешений, которые нужно запросить у пользователя на этой версии Android. */
-fun requiredPermissions(): Array<String> = buildList {
-    if (Build.VERSION.SDK_INT >= 29) add(Manifest.permission.ACTIVITY_RECOGNITION) // шаги
-    if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)   // уведомления
-}.toTypedArray()
+/**
+ * Разрешения, которые просим при первом запуске: только распознавание активности (шаги).
+ * Уведомления и работа в фоне запрашиваются следом, по очереди (см. MainActivity).
+ */
+fun requiredPermissions(): Array<String> =
+    if (Build.VERSION.SDK_INT >= 29) arrayOf(Manifest.permission.ACTIVITY_RECOGNITION) else emptyArray()

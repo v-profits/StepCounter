@@ -1,15 +1,18 @@
 package com.semenenko.stepcounter
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.core.app.ActivityCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -71,7 +74,10 @@ import com.semenenko.stepcounter.ui.theme.StepCounterTheme
 import com.semenenko.stepcounter.util.backgroundWorkIntent
 import com.semenenko.stepcounter.util.hasActivityRecognition
 import com.semenenko.stepcounter.util.isIgnoringBatteryOptimizations
-import com.semenenko.stepcounter.util.openBatterySettings
+import com.semenenko.stepcounter.util.isRestrictiveOem
+import com.semenenko.stepcounter.util.openAppSettings
+import com.semenenko.stepcounter.util.notificationsEnabled
+import com.semenenko.stepcounter.util.openNotificationSettings
 import com.semenenko.stepcounter.util.requestBackgroundWork
 import com.semenenko.stepcounter.util.mediumDate
 import com.semenenko.stepcounter.util.requiredPermissions
@@ -136,12 +142,18 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
 
     var tab by rememberSaveable { mutableIntStateOf(0) } // номер выбранной вкладки (сохраняется при повороте)
     var permissionGranted by remember { mutableStateOf(context.hasActivityRecognition()) } // есть ли разрешение
-    var denied by rememberSaveable { mutableStateOf(false) } // пользователь отказал в разрешении
+    val prefs = remember { context.getSharedPreferences("steps", Context.MODE_PRIVATE) }
+    // Просили ли уже разрешение на шаги и получили отказ (запоминаем и между запусками — от этого зависит баннер сверху)
+    var denied by rememberSaveable { mutableStateOf(prefs.getBoolean("activity_asked", false)) }
+    // Можно ли ещё показать системное окно запроса (после двух отказов Android его больше не показывает)
+    fun canAsk(permission: String): Boolean =
+        (context as? Activity)?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, permission) } ?: true
 
     // Окно запроса разрешений; в лямбде — что делать после ответа пользователя
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         permissionGranted = context.hasActivityRecognition()
         denied = !permissionGranted
+        if (denied) prefs.edit().putBoolean("activity_asked", true).apply()
         if (permissionGranted && vm.sensorAvailable) StepService.start(context)
     }
 
@@ -176,7 +188,8 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
 
     // При первом показе экрана просим разрешения, если их ещё нет
     LaunchedEffect(Unit) {
-        if (!permissionGranted) launcher.launch(requiredPermissions())
+        // Автоматически просим только в первый раз; дальше — баннер сверху
+        if (!permissionGranted && !denied) launcher.launch(requiredPermissions())
     }
 
     // Показывать ли окно со звёздами «Оцените приложение» (сохраняется при смене языка и т.п.)
@@ -205,16 +218,48 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
         if (batteryFromDialog && !batteryOk) showBatteryHint = true
         batteryFromDialog = false
     }
-    LaunchedEffect(permissionGranted) {
-        if (permissionGranted && !batteryOk) {
-            val prefs = context.getSharedPreferences("steps", Context.MODE_PRIVATE)
-            if (!prefs.getBoolean("battery_asked", false)) showBatteryDialog = true
+
+    // Уведомления: сразу после разрешения на активность — системное окно запроса.
+    // Отказали — показываем подсказку, где это сделать позже (кнопка в «Настройки»).
+    var notifOk by remember { mutableStateOf(context.notificationsEnabled()) }
+    var showNotifHint by rememberSaveable { mutableStateOf(false) }
+    val oemRestricted = remember { isRestrictiveOem() }                   // у телефона своя защита фона
+    var oemDone by remember { mutableStateOf(prefs.getBoolean("oem_done", false)) } // пользователь открывал эти настройки
+    // Проверить выключатели производителя нельзя — считаем шаг выполненным, когда пользователь их открыл
+    val openOemSettings = {
+        prefs.edit().putBoolean("oem_done", true).apply()
+        oemDone = true
+        context.openAppSettings()
+    }
+    var notifAuto by rememberSaveable { mutableStateOf(false) } // окно открыто автоматически, а не кнопкой в настройках
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        notifOk = context.notificationsEnabled()
+        if (notifAuto && !notifOk) showNotifHint = true
+        notifAuto = false
+    }
+
+    // Окна показываем по очереди: активность → уведомления → работа в фоне
+    LaunchedEffect(permissionGranted, showNotifHint, notifAuto, showBatteryDialog, showBatteryHint, batteryFromDialog) {
+        if (permissionGranted && !showNotifHint && !notifAuto) {
+            if (!notifOk && !prefs.getBoolean("notif_asked", false)) {
+                prefs.edit().putBoolean("notif_asked", true).apply()
+                if (Build.VERSION.SDK_INT >= 33) {
+                    notifAuto = true
+                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    showNotifHint = true // до Android 13 окна запроса нет: уведомления выключены вручную
+                }
+            } else if ((if (oemRestricted) !oemDone else !batteryOk) && !prefs.getBoolean("battery_asked", false)) {
+                // На телефонах с собственной защитой фона нужны настройки производителя, а не только системное окно Android
+                showBatteryDialog = true
+            }
         }
     }
 
     // Каждый раз, когда приложение возвращается на экран: перепроверяем разрешения и (пере)запускаем сервис
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         batteryOk = context.isIgnoringBatteryOptimizations()
+        notifOk = context.notificationsEnabled()
         permissionGranted = context.hasActivityRecognition()
         if (permissionGranted && vm.sensorAvailable) StepService.start(context)
     }
@@ -249,18 +294,21 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                     stringResource(R.string.banner_no_sensor),
                     null,
                 ) {}
-                !permissionGranted && denied -> Banner( // только после отказа: пока идёт системный запрос, баннер не нужен
-                    stringResource(R.string.banner_permission),
-                    if (denied) stringResource(R.string.btn_open_settings) else stringResource(R.string.btn_allow),
-                ) {
-                    if (denied) {
-                        // Отказали навсегда — открываем системные настройки приложения
-                        context.startActivity(
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                .setData(Uri.fromParts("package", context.packageName, null))
-                        )
-                    } else {
-                        launcher.launch(requiredPermissions()) // просим разрешение ещё раз
+                !permissionGranted && denied -> {
+                    // Пока Android готов показать окно — показываем его по нажатию; после двух отказов остаются только настройки
+                    val canAskAgain = canAsk(Manifest.permission.ACTIVITY_RECOGNITION)
+                    Banner(
+                        stringResource(R.string.banner_permission),
+                        if (canAskAgain) stringResource(R.string.btn_allow) else stringResource(R.string.btn_open_settings),
+                    ) {
+                        if (canAskAgain) {
+                            launcher.launch(requiredPermissions())
+                        } else {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    .setData(Uri.fromParts("package", context.packageName, null))
+                            )
+                        }
                     }
                 }
             }
@@ -275,8 +323,21 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
                             settings = settings,
                             lastSensorTime = lastSensorTime,
                             batteryOk = batteryOk,
+                            notifOk = notifOk,
+                            oemRestricted = oemRestricted,
+                            oemDone = oemDone,
+                            onOemOpen = openOemSettings,
+                            onNotifRequest = {
+                                // Системное окно, пока Android готов его показать; иначе — настройки уведомлений приложения
+                                if (Build.VERSION.SDK_INT >= 33 &&
+                                    (!prefs.getBoolean("notif_asked", false) || canAsk(Manifest.permission.POST_NOTIFICATIONS))
+                                ) {
+                                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    context.openNotificationSettings()
+                                }
+                            },
                             onBatteryRequest = { context.requestBackgroundWork() },
-                            onBatterySettings = { context.openBatterySettings() },
                             onGoal = vm::setGoal,
                             onHeight = vm::setHeight,
                             onSex = vm::setSex,
@@ -315,21 +376,33 @@ fun StepCounterRoot(vm: MainViewModel = viewModel()) {
     val markBatteryAsked = {
         context.getSharedPreferences("steps", Context.MODE_PRIVATE).edit().putBoolean("battery_asked", true).apply()
     }
+    if (showNotifHint) {
+        AlertDialog(
+            onDismissRequest = { showNotifHint = false },
+            title = { Text(stringResource(R.string.notif_hint_title)) },
+            text = { Text(stringResource(R.string.notif_hint_text)) },
+            confirmButton = { TextButton(onClick = { showNotifHint = false }) { Text(stringResource(R.string.battery_hint_ok)) } },
+        )
+    }
     if (showBatteryDialog) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.battery_dlg_title)) },
-            text = { Text(stringResource(R.string.battery_dlg_text)) },
+            text = { Text(stringResource(if (oemRestricted) R.string.battery_dlg_text_oem else R.string.battery_dlg_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     showBatteryDialog = false
                     markBatteryAsked()
-                    batteryFromDialog = true
-                    runCatching { batteryLauncher.launch(context.backgroundWorkIntent()) }.onFailure {
-                        batteryFromDialog = false
-                        context.requestBackgroundWork()
+                    if (oemRestricted) {
+                        openOemSettings() // одно окно настроек приложения: «Работа в фоновом режиме» и «Автозапуск»
+                    } else {
+                        batteryFromDialog = true
+                        runCatching { batteryLauncher.launch(context.backgroundWorkIntent()) }.onFailure {
+                            batteryFromDialog = false
+                            context.requestBackgroundWork()
+                        }
                     }
-                }) { Text(stringResource(R.string.btn_allow)) }
+                }) { Text(stringResource(if (oemRestricted) R.string.btn_open_settings else R.string.btn_allow)) }
             },
             dismissButton = {
                 TextButton(onClick = {
